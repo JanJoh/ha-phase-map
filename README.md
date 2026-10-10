@@ -1,47 +1,154 @@
-# Phase Map for Home Assistant
+# HA Phase Map
 
-See which loads sit on which phase of your main fuse, how much headroom each phase has,
-and which big loads are drawing power that no meter accounts for.
+**Know which load is on which phase of your main fuse, how much headroom each phase has, and
+when something without a meter (a sauna, a heater) is drawing power.**
 
-Phase Map is planned as a Home Assistant custom integration plus a dashboard card:
+![Phase bus card, light theme](docs/images/card-light.png)
 
-- **Integration (`phase_map`)**: you pick the sensors that measure your main fuse and
-  assign every power meter to a phase (or let it suggest the phase from history). It
-  creates sensors for unmetered current and headroom per phase, and an "unmetered load"
-  detector, for example to notice a sauna without its own meter and block a heat pump
-  while it runs.
-- **Card (`phase-bus-card`)**: a single-line diagram with the main fuse, one bus per
-  phase, and each load branching off its phase, with live or average power.
+HA Phase Map is a Home Assistant custom integration. You tell it which sensors measure your
+main fuse and add your power meters as loads on their phase, and it suggests the phase from
+history when you add a meter. It then gives you:
 
-> **Status:** design and prototype. Nothing here installs into Home Assistant yet.
-> This repository is private while the design settles; it will later move to a public
-> repository.
+- **Unmetered current per phase**: main-fuse current minus every load you have a meter for.
+  Normally small; when it jumps, something without a meter is on.
+- **Headroom per phase**: how far each phase is from the fuse rating.
+- **Overload risk per phase**: a binary sensor that turns on when a phase stays close to the
+  fuse rating.
+- **Unmetered load detectors**: a binary sensor that turns on when unmetered current rises on
+  the phases you choose. A three-phase sauna is the classic case: use the detector to block a
+  heat pump while the sauna runs, so the main fuse does not blow.
+- **A dashboard card** that draws it all as a single-line diagram:
+  [HA Phase Map Card](https://github.com/JanJoh/ha-phase-map-card) (separate repository).
 
-## What is here now
+Everything runs locally inside Home Assistant. There is no cloud service and no extra token.
 
-| Path | Contents |
+## Requirements
+
+- Home Assistant **2026.10** or newer (tested on 2026.10.0).
+- A sensor per phase at the main fuse, in **A, mA, W or kW**. For example from a P1/HAN port
+  reader, a Shelly Pro 3EM on the incoming cables, Tibber Pulse, or a load balancer such as
+  Garo Entity Balance.
+- Power or current sensors for the loads you want to show. A Shelly Pro 3EM gives one sensor
+  per phase; smart plugs give one sensor each.
+- The **recorder** with long-term statistics (the default) for phase suggestions and averages.
+
+Single-phase homes and split-phase (2 × 120 V) homes work too: choose 1 or 2 phases.
+
+## Installation
+
+The repository is private while it is being tested, so install it manually for now:
+
+1. Copy `custom_components/phase_map` into your Home Assistant `config/custom_components/`.
+2. Restart Home Assistant.
+
+Once public, it will be installable through HACS as a custom repository.
+
+## Setup
+
+**Settings → Devices & services → Add integration → HA Phase Map**
+
+1. **Main fuse**: name, number of phases, phase voltage (230 V in most of Europe, 120 V in
+   North America) and fuse rating per phase.
+2. **Main fuse sensors**: the sensor for each phase.
+
+Then, on the HA Phase Map entry, add:
+
+- **Load → One meter on one phase**: pick the meter. The integration looks at the last
+  10 days and suggests the phase, for example *"Dishwasher is probably on L2 (high
+  confidence: 47 on/off steps, gain 1.03)"*. Change it if you know better.
+- **Load → A multi-phase load**: one meter channel per phase, for example an EV charger or a
+  stove measured by a Shelly Pro 3EM.
+- **Load → A load without a meter (estimated)**: name, phases and estimated power. It is drawn
+  dashed on the card.
+- **Detector**: phases, minimum extra current per phase (an 8 kW three-phase sauna adds about
+  11 A per phase), and delays. The off-delay keeps it on while a thermostat cycles.
+
+Use **⋮ → Reconfigure** to change the fuse or its sensors, and **Configure** for the overload
+warning margin and delay.
+
+### How the phase suggestion works
+
+Every time a meter steps up or down, the main-fuse phase it sits on should step by about the
+same current while the other phases stay flat. The integration takes the meter's steps from
+the 5-minute statistics, averages each phase's response in the direction of the step, and
+reports the **gain** (about 1.0 on the right phase) and how clearly it stands out. Big loads
+(dishwasher, oven, heat pump) are found within days; fridges need about 10 days; a load that
+never switches (a UPS) cannot be placed from history.
+
+## Entities
+
+For a main fuse called *Main fuse* with phases L1–L3:
+
+| Entity | Meaning |
 |---|---|
-| [`docs/design.md`](docs/design.md) | Architecture, data model, setup flow, card data contract, phase auto-detection, open questions |
-| [`prototype/phase-bus/`](prototype/phase-bus/) | Standalone generator for the bus diagram: `loads.example.json` → `phase-bus.html` |
-| [`prototype/analysis/`](prototype/analysis/) | The scripts that worked out which phase each meter is on, from Home Assistant statistics |
+| `sensor.main_fuse_l1_unmetered_current` | Main-fuse current minus all metered loads on L1 (A). Attributes: main-fuse current, metered current, typical unmetered level |
+| `sensor.main_fuse_l1_headroom` | Fuse rating minus main-fuse current (A) |
+| `binary_sensor.main_fuse_l1_overload_risk` | On when L1 stays within the warning margin of the fuse rating |
+| `binary_sensor.<detector name>` | On while the detector's load runs. Attributes: unmetered current above normal per phase |
 
-### Try the diagram prototype
+The detector compares against the *typical* unmetered current per phase, which it learns
+continuously (20th percentile of the last 6 hours), so lighting and sockets do not trigger it.
 
-```sh
-python3 prototype/phase-bus/phase_bus.py            # uses loads.json, else loads.example.json
-open prototype/phase-bus/phase-bus.html
+## Example: block the heat pump while the sauna runs
+
+```yaml
+automation:
+  - alias: "Sauna on: block the heat pump"
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.sauna_running
+        to: "on"
+    actions:
+      - action: switch.turn_off
+        target:
+          entity_id: switch.heat_pump_allowed   # whatever your heat pump exposes
+  - alias: "Sauna off: release the heat pump"
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.sauna_running
+        to: "off"
+    actions:
+      - action: switch.turn_on
+        target:
+          entity_id: switch.heat_pump_allowed
 ```
 
-The example data is a real three-phase, 3 × 20 A Swedish house with about twenty
-metered loads, an EV charger, a CEE outlet and an unmetered sauna.
+## The card
 
-## Requirements (planned)
+![Phase bus card, dark theme](docs/images/card-dark.png)
 
-- Home Assistant 2026.8 or newer (config subentries)
-- A sensor for current or power per phase at the main fuse (P1/HAN port, Shelly Pro 3EM,
-  Tibber Pulse, Garo Entity Balance or similar)
-- Recorder long-term statistics for the meters you want to place automatically
+Install [HA Phase Map Card](https://github.com/JanJoh/ha-phase-map-card) and add:
+
+```yaml
+type: custom:phase-bus-card
+title: Phase map
+mode: live        # or: average
+days: 10          # for average
+```
+
+## Websocket API
+
+The card uses these commands; other frontends can too.
+
+| Command | Returns |
+|---|---|
+| `phase_map/entries` | Configured main fuses |
+| `phase_map/subscribe` `{entry_id}` | Live layout and values, pushed on every change |
+| `phase_map/average` `{entry_id, days}` | Average power per phase and per load from statistics |
+| `phase_map/suggest_phase` `{entry_id, entity_id, days}` | Which phase a meter is probably on, with scores per phase |
+
+## Development
+
+Tests run against the exact Home Assistant version in `requirements_test.txt`:
+
+```sh
+pip install -r requirements_test.txt
+pytest
+```
+
+`docs/design.md` describes the design; `prototype/` holds the analysis scripts and the
+original diagram generator.
 
 ## License
 
-To be decided before the repository goes public.
+[MIT](LICENSE)

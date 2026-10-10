@@ -1,0 +1,192 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Huvudsäkring",
+        "description": "Beskriv huvudsäkringen som alla laster delar på.",
+        "data": {
+          "name": "Namn",
+          "phase_count": "Antal faser",
+          "voltage": "Fasspänning",
+          "fuse_a": "Säkringsstorlek per fas"
+        },
+        "data_description": {
+          "voltage": "Används för att räkna om mellan watt och ampere. 230 V i större delen av Europa, 120 V i Nordamerika.",
+          "fuse_a": "Huvudsäkringens storlek, till exempel 16, 20 eller 25 A."
+        }
+      },
+      "sources": {
+        "title": "Givare för huvudsäkringen",
+        "description": "Välj den givare som mäter varje fas vid huvudsäkringen ({phases}): ström i A eller effekt i W. Till exempel från en P1/HAN-port, en Shelly Pro 3EM eller en lastbalanserare."
+      },
+      "reconfigure": {
+        "title": "Ändra huvudsäkring",
+        "data": {
+          "voltage": "Fasspänning",
+          "fuse_a": "Säkringsstorlek per fas"
+        }
+      }
+    },
+    "error": {
+      "unsupported_unit": "Givaren måste rapportera A, mA, W eller kW.",
+      "same_sensor_twice": "Använd en egen givare för varje fas."
+    },
+    "abort": {
+      "already_configured": "Den här huvudsäkringen är redan uppsatt.",
+      "reconfigure_successful": "Huvudsäkringen uppdaterades."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Överlastvarning",
+        "data": {
+          "margin_a": "Varningsmarginal under säkringsstorleken",
+          "overload_delay_s": "Fördröjning före varning"
+        },
+        "data_description": {
+          "margin_a": "Överlastgivaren slår till när en fas kommer så här nära säkringsstorleken.",
+          "overload_delay_s": "Hur länge fasen måste ligga så högt innan varningen slår till."
+        }
+      }
+    }
+  },
+  "selector": {
+    "phase_count": {
+      "options": {
+        "1": "1 fas",
+        "2": "2 faser (delad fas)",
+        "3": "3 faser"
+      }
+    }
+  },
+  "config_subentries": {
+    "load": {
+      "initiate_flow": {
+        "user": "Lägg till last",
+        "reconfigure": "Ändra last"
+      },
+      "entry_type": "Last",
+      "step": {
+        "user": {
+          "title": "Lägg till en last",
+          "description": "Vilken sorts last är det?",
+          "menu_options": {
+            "meter": "En mätare på en fas",
+            "multi": "En flerfaslast med en mätare per fas",
+            "estimated": "En last utan mätare (uppskattad)"
+          }
+        },
+        "meter": {
+          "title": "Last med en mätare",
+          "description": "Välj den givare som mäter lasten (effekt eller ström). Nästa steg föreslår vilken fas den sitter på, utifrån de senaste 10 dagarna.",
+          "data": {
+            "name": "Namn",
+            "entity": "Mätare"
+          }
+        },
+        "phase": {
+          "title": "Vilken fas?",
+          "description": "{name} sitter troligen på **{phase}** ({confidence} säkerhet: {steps} till/från-steg, förstärkning {gain}). Ändra om du vet bättre.",
+          "data": {
+            "phase": "Fas"
+          }
+        },
+        "phase_manual": {
+          "title": "Vilken fas?",
+          "description": "Historiken kunde inte avgöra vilken fas {name} sitter på ({steps} användbara till/från-steg de senaste 10 dagarna). Välj fas själv, eller kom tillbaka när den har slagits på och av några gånger.",
+          "data": {
+            "phase": "Fas"
+          }
+        },
+        "multi": {
+          "title": "Flerfaslast",
+          "description": "Välj mätarkanalen för varje fas som lasten använder, till exempel de tre faserna i en Shelly Pro 3EM. Lämna oanvända faser tomma.",
+          "data": {
+            "name": "Namn"
+          }
+        },
+        "estimated": {
+          "title": "Last utan mätare",
+          "description": "Ritas med streckad kant. Lägg till en detektor för att märka när den går.",
+          "data": {
+            "name": "Namn",
+            "estimated_phases": "Faser",
+            "estimated_w": "Uppskattad effekt när den är på"
+          }
+        },
+        "reconfigure": {
+          "title": "Ändra last",
+          "data": {
+            "name": "Namn",
+            "estimated_phases": "Faser",
+            "estimated_w": "Uppskattad effekt när den är på"
+          }
+        }
+      },
+      "error": {
+        "unsupported_unit": "Givaren måste rapportera A, mA, W eller kW.",
+        "no_meter": "Välj en mätare för minst en fas.",
+        "no_phase": "Välj minst en fas."
+      },
+      "abort": {
+        "reconfigure_successful": "Lasten uppdaterades."
+      }
+    },
+    "detector": {
+      "initiate_flow": {
+        "user": "Lägg till detektor",
+        "reconfigure": "Ändra detektor"
+      },
+      "entry_type": "Detektor för omätt last",
+      "step": {
+        "user": {
+          "title": "Detektor för omätt last",
+          "description": "Slår till när ström som ingen mätare förklarar ökar på alla valda faser samtidigt, till exempel en bastu. Använd den i automationer, som att blockera värmepumpen medan bastun går.",
+          "data": {
+            "name": "Namn",
+            "detect_phases": "Faser",
+            "min_current_a": "Minsta extra ström per fas",
+            "on_delay_s": "Slå till efter",
+            "off_delay_s": "Slå från efter"
+          },
+          "data_description": {
+            "min_current_a": "Omätt ström över dess normala nivå som räknas som att lasten går. Ett trefasigt bastuaggregat på 8 kW ger ungefär 11 A per fas.",
+            "off_delay_s": "Håll detektorn på så här länge efter att strömmen sjunkit, så att en termostat som slår av och på inte får den att fladdra."
+          }
+        },
+        "reconfigure": {
+          "title": "Ändra detektor",
+          "data": {
+            "name": "Namn",
+            "detect_phases": "Faser",
+            "min_current_a": "Minsta extra ström per fas",
+            "on_delay_s": "Slå till efter",
+            "off_delay_s": "Slå från efter"
+          }
+        }
+      },
+      "error": {
+        "no_phase": "Välj minst en fas."
+      },
+      "abort": {
+        "reconfigure_successful": "Detektorn uppdaterades."
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "unmetered_current": {
+        "name": "{phase} omätt ström"
+      },
+      "headroom": {
+        "name": "{phase} marginal"
+      }
+    },
+    "binary_sensor": {
+      "overload": {
+        "name": "{phase} överlastrisk"
+      }
+    }
+  }
+}

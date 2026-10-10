@@ -1,0 +1,192 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Main fuse",
+        "description": "Describe the main fuse that all your loads share.",
+        "data": {
+          "name": "Name",
+          "phase_count": "Number of phases",
+          "voltage": "Phase voltage",
+          "fuse_a": "Fuse rating per phase"
+        },
+        "data_description": {
+          "voltage": "Used to convert between watts and amps. 230 V in most of Europe, 120 V in North America.",
+          "fuse_a": "The rating of your main fuse, for example 16, 20 or 25 A."
+        }
+      },
+      "sources": {
+        "title": "Main fuse sensors",
+        "description": "Pick the sensor that measures each phase at the main fuse ({phases}): current in A, or power in W. For example from a P1/HAN port, a Shelly Pro 3EM or a load balancer."
+      },
+      "reconfigure": {
+        "title": "Edit main fuse",
+        "data": {
+          "voltage": "Phase voltage",
+          "fuse_a": "Fuse rating per phase"
+        }
+      }
+    },
+    "error": {
+      "unsupported_unit": "This sensor must report A, mA, W or kW.",
+      "same_sensor_twice": "Use a different sensor for each phase."
+    },
+    "abort": {
+      "already_configured": "This main fuse is already set up.",
+      "reconfigure_successful": "The main fuse was updated."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Overload warning",
+        "data": {
+          "margin_a": "Warning margin below the fuse rating",
+          "overload_delay_s": "Delay before warning"
+        },
+        "data_description": {
+          "margin_a": "The overload sensor turns on when a phase gets this close to the fuse rating.",
+          "overload_delay_s": "How long the phase must stay that high before the warning turns on."
+        }
+      }
+    }
+  },
+  "selector": {
+    "phase_count": {
+      "options": {
+        "1": "1 phase",
+        "2": "2 phases (split-phase)",
+        "3": "3 phases"
+      }
+    }
+  },
+  "config_subentries": {
+    "load": {
+      "initiate_flow": {
+        "user": "Add load",
+        "reconfigure": "Edit load"
+      },
+      "entry_type": "Load",
+      "step": {
+        "user": {
+          "title": "Add a load",
+          "description": "What kind of load is it?",
+          "menu_options": {
+            "meter": "One meter on one phase",
+            "multi": "A multi-phase load with one meter per phase",
+            "estimated": "A load without a meter (estimated)"
+          }
+        },
+        "meter": {
+          "title": "Load with one meter",
+          "description": "Pick the sensor that measures this load (power or current). The next step suggests which phase it is on, based on the last 10 days.",
+          "data": {
+            "name": "Name",
+            "entity": "Meter"
+          }
+        },
+        "phase": {
+          "title": "Which phase?",
+          "description": "{name} is probably on **{phase}** ({confidence} confidence: {steps} on/off steps, gain {gain}). Change it if you know better.",
+          "data": {
+            "phase": "Phase"
+          }
+        },
+        "phase_manual": {
+          "title": "Which phase?",
+          "description": "History could not tell which phase {name} is on ({steps} usable on/off steps in the last 10 days). Pick the phase, or come back after it has been switched on and off a few times.",
+          "data": {
+            "phase": "Phase"
+          }
+        },
+        "multi": {
+          "title": "Multi-phase load",
+          "description": "Pick the meter channel for each phase the load uses, for example the three phases of a Shelly Pro 3EM. Leave unused phases empty.",
+          "data": {
+            "name": "Name"
+          }
+        },
+        "estimated": {
+          "title": "Load without a meter",
+          "description": "Drawn with a dashed outline. Add a detector to notice when it runs.",
+          "data": {
+            "name": "Name",
+            "estimated_phases": "Phases",
+            "estimated_w": "Estimated power when on"
+          }
+        },
+        "reconfigure": {
+          "title": "Edit load",
+          "data": {
+            "name": "Name",
+            "estimated_phases": "Phases",
+            "estimated_w": "Estimated power when on"
+          }
+        }
+      },
+      "error": {
+        "unsupported_unit": "This sensor must report A, mA, W or kW.",
+        "no_meter": "Pick a meter for at least one phase.",
+        "no_phase": "Pick at least one phase."
+      },
+      "abort": {
+        "reconfigure_successful": "The load was updated."
+      }
+    },
+    "detector": {
+      "initiate_flow": {
+        "user": "Add detector",
+        "reconfigure": "Edit detector"
+      },
+      "entry_type": "Unmetered load detector",
+      "step": {
+        "user": {
+          "title": "Unmetered load detector",
+          "description": "Turns on when current that no meter explains rises on all the chosen phases at once, for example a sauna. Use it in automations, such as blocking a heat pump while the sauna runs.",
+          "data": {
+            "name": "Name",
+            "detect_phases": "Phases",
+            "min_current_a": "Minimum extra current per phase",
+            "on_delay_s": "Turn on after",
+            "off_delay_s": "Turn off after"
+          },
+          "data_description": {
+            "min_current_a": "Unmetered current above its normal level that counts as the load running. An 8 kW three-phase sauna adds about 11 A per phase.",
+            "off_delay_s": "Keep the detector on this long after the current drops, so a thermostat switching on and off does not make it flicker."
+          }
+        },
+        "reconfigure": {
+          "title": "Edit detector",
+          "data": {
+            "name": "Name",
+            "detect_phases": "Phases",
+            "min_current_a": "Minimum extra current per phase",
+            "on_delay_s": "Turn on after",
+            "off_delay_s": "Turn off after"
+          }
+        }
+      },
+      "error": {
+        "no_phase": "Pick at least one phase."
+      },
+      "abort": {
+        "reconfigure_successful": "The detector was updated."
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "unmetered_current": {
+        "name": "{phase} unmetered current"
+      },
+      "headroom": {
+        "name": "{phase} headroom"
+      }
+    },
+    "binary_sensor": {
+      "overload": {
+        "name": "{phase} overload risk"
+      }
+    }
+  }
+}

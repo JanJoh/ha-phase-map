@@ -1,7 +1,10 @@
 # Phase Map: design
 
-Status: draft, 2026-10-10. Written from a working prototype on one installation
-(3 × 230 V, 3 × 20 A main fuse, ~20 sub-meters).
+Status: **0.1.0 implemented** (2026-10-10): config entry, load and detector subentries,
+phase suggestion in the load flow, per-phase sensors, overload and detector binary sensors,
+websocket API, and the card in [ha-phase-map-card](https://github.com/JanJoh/ha-phase-map-card).
+Not yet: new-meter discovery (section 6), nested meters (`included_in`), guided test mode.
+Written from a working prototype on one installation (3 × 230 V, 3 × 20 A, ~20 sub-meters).
 
 ## 1. Problem
 
@@ -122,7 +125,7 @@ main fuse at full resolution for 2 minutes and reports the phase with the matchi
 
 ## 7. Card data contract
 
-Websocket command `phase_map/layout` (subscription, pushes on change):
+Websocket command `phase_map/subscribe` (subscription, pushes on change; implemented in 0.1.0 with `current_a`, `unmetered_a`, `headroom_a` per phase and `w` per load channel):
 
 ```json
 {
@@ -176,15 +179,16 @@ computed in the integration (`recorder/statistics_during_period`), not in the br
 - Translations: English and Swedish.
 - Development against a separate Home Assistant in Docker, never the live installation.
 
-## 11. Open questions
+## 11. Decisions and open questions
+
+Decided 2026-10-10: the card is a **separate repository** (`ha-phase-map-card`), the license
+is **MIT**, the name is **ha-phase-map** ("HA Phase Map", domain `phase_map`), and 0.1.0 covers
+manual assignment with suggested phases, sensors, detectors and the card.
+
+Still open:
 
 1. **Distribution:** HACS expects one integration per repository with
    `custom_components/<domain>/` at the top. The planned public home, `JanJoh/ha-addons`,
    is a Supervisor add-on repository (`repository.yaml`). Options: a separate public
    repository for the integration (recommended), or a monorepo with the card bundled in
    the integration.
-2. **Card shipping:** bundled with the integration (one install) or a separate HACS plugin?
-3. **License:** MIT, as is customary for HA custom components?
-4. **First version scope:** manual assignment + sensors + card first, auto-detection and
-   discovery in version 2?
-5. **Name:** `phase_map` / "Phase Map", or something else?

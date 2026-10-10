@@ -1,0 +1,12 @@
+{
+  "entity": {
+    "sensor": {
+      "unmetered_current": {"default": "mdi:help-circle-outline"},
+      "headroom": {"default": "mdi:gauge"}
+    },
+    "binary_sensor": {
+      "overload": {"default": "mdi:fuse", "state": {"on": "mdi:fuse-alert"}},
+      "detector": {"default": "mdi:radiator-off", "state": {"on": "mdi:radiator"}}
+    }
+  }
+}

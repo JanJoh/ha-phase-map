@@ -1,0 +1,14 @@
+{
+  "domain": "phase_map",
+  "name": "HA Phase Map",
+  "after_dependencies": ["recorder"],
+  "codeowners": ["@JanJoh"],
+  "config_flow": true,
+  "dependencies": ["websocket_api"],
+  "documentation": "https://github.com/JanJoh/ha-phase-map",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/JanJoh/ha-phase-map/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}
