@@ -1,0 +1,157 @@
+{
+  "period": "30 Sep – 10 Oct 2026",
+  "fuse": "3 × 20 A",
+  "phases": {
+    "L1": {
+      "total_w": 791,
+      "loads": [
+        {
+          "name": "Dehumidifier",
+          "w": 91,
+          "entity": "sensor.avfuktaren_power"
+        },
+        {
+          "name": "Heat pump|immersion heater",
+          "w": 63,
+          "entity": "sensor.shellypro3em_ece334ea8c9c_phase_a_current"
+        },
+        {
+          "name": "Fridge/freezer|kitchen",
+          "w": 43,
+          "entity": "sensor.grillplats_plug_effekt"
+        },
+        {
+          "name": "Freezer|basement",
+          "w": 38,
+          "entity": "sensor.frysskap_kallaren_effekt"
+        },
+        {
+          "name": "Garage|channel “L3”",
+          "w": 21,
+          "entity": "sensor.garaget_garaget_l3_effekt"
+        },
+        {
+          "name": "Stove|(meter C)",
+          "w": 13,
+          "entity": "sensor.effektmatare_spis_phase_c_effekt"
+        },
+        {
+          "name": "IR heaters|Matgrupp",
+          "w": 0,
+          "entity": "sensor.effektmatare_infravarmare_phase_c_effekt"
+        }
+      ]
+    },
+    "L2": {
+      "total_w": 403,
+      "loads": [
+        {
+          "name": "Water heater|Ostbiten",
+          "w": 149,
+          "entity": "sensor.effektmatare_varmvattenberedare_effekt"
+        },
+        {
+          "name": "Dishwasher",
+          "w": 29,
+          "entity": "sensor.effektmatare_diskmaskinen_effekt"
+        },
+        {
+          "name": "Washing|machine",
+          "w": 13,
+          "entity": "sensor.effektmatare_tvattmaskinen_effekt"
+        },
+        {
+          "name": "Heat pump|immersion heater",
+          "w": 10,
+          "entity": "sensor.shellypro3em_ece334ea8c9c_phase_c_current"
+        },
+        {
+          "name": "Kettle",
+          "w": 9,
+          "entity": "sensor.vattenkokaren_effekt"
+        }
+      ]
+    },
+    "L3": {
+      "total_w": 569,
+      "loads": [
+        {
+          "name": "Heat pump|compressor",
+          "w": 314,
+          "entity": "sensor.shellypro3em_ece334ea8c9c_phase_b_current"
+        },
+        {
+          "name": "Trygghetsvakten|attic",
+          "w": 219,
+          "entity": "sensor.trygghetsvakten_vind_effekt"
+        },
+        {
+          "name": "Oven|(stove meter B)",
+          "w": 21,
+          "entity": "sensor.effektmatare_spis_ugn_effekt"
+        }
+      ]
+    }
+  },
+  "three_phase": [
+    {
+      "name": "EV charger (Garo)",
+      "w": 137,
+      "assumed": false,
+      "lines": [
+        "3-phase, 11 kW"
+      ],
+      "notes": [
+        "all on L1: hybrid car",
+        "charges on 1 phase",
+        "L2 · L3: 0 W"
+      ],
+      "per_phase_w": {
+        "L1": 137,
+        "L2": 0,
+        "L3": 0
+      }
+    },
+    {
+      "name": "CEE outlet, garage",
+      "w": 0,
+      "assumed": false,
+      "lines": [
+        "3-phase socket"
+      ],
+      "notes": [
+        "own meter (Shelly 3EM),",
+        "unused 90 days"
+      ],
+      "per_phase_w": {
+        "L1": 0,
+        "L2": 0,
+        "L3": 0
+      }
+    },
+    {
+      "name": "Sauna",
+      "w": 0,
+      "assumed": true,
+      "lines": [
+        "3-phase"
+      ],
+      "notes": [
+        "not metered,",
+        "unused 90 days",
+        "≈ 8 kW when on"
+      ],
+      "per_phase_w": {
+        "L1": 0,
+        "L2": 0,
+        "L3": 0
+      }
+    }
+  ],
+  "page_notes": [
+    "<b>EV charger:</b> can draw 16 A per phase with a 3-phase car; today's hybrid charges on L1 only, which is where all its average lands.",
+    "<b>Unmetered rest</b> is the phase's average minus every meter on it: lighting, sockets and anything without its own meter.",
+    "<b>Too small to place:</b> basement fridge (≈ 12 W), office PC, screen, laptop and speakers (≈ 27 W together), UPS Rack (≈ 50 W) and UPS Pentserv02 (≈ 65 W). They sit inside the unmetered rest of some phase.",
+    "<b>How the numbers were made:</b> phase totals, the EV charger and the heat pump come from current sensors and are shown as current × 230 V, which reads slightly high (about 25 % for the heat pump). The other loads come from their own power meters. The sauna is 3-phase but has not run in 90 days; 8 kW is an assumption until it has been measured."
+  ]
+}

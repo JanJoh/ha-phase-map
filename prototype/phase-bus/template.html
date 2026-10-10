@@ -1,0 +1,61 @@
+<title>Phase Bus Diagram</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: one wide single-line diagram (main fuse → three phase buses → loads), with notes underneath.
+   Phase colours: --l1 / --l2 / --l3; assumed (unmeasured) loads use --sauna and dashed lines. */
+:root{
+  --bg:#f3f5f6; --surface:#ffffff; --fg:#1b2428; --muted:#5b6a71; --line:#d7dee2;
+  --l1:#b8571d; --l2:#2a6fb0; --l3:#4f7d33; --sauna:#8a4fb5;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#121719; --surface:#1a2124; --fg:#e2e9ec; --muted:#93a3aa; --line:#2b373c;
+  --l1:#e08a4f; --l2:#6aa8e6; --l3:#8fc06b; --sauna:#c08ae6; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121719; --surface:#1a2124; --fg:#e2e9ec; --muted:#93a3aa; --line:#2b373c;
+  --l1:#e08a4f; --l2:#6aa8e6; --l3:#8fc06b; --sauna:#c08ae6; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font:15px/1.5 var(--sans);padding:28px 16px 40px}
+main{max-width:%%MAXW%%px;margin:0 auto;display:grid;gap:18px}
+header{display:grid;gap:6px}
+.eyebrow{font:500 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+h1{margin:0;font-size:24px;line-height:1.2;font-weight:600;text-wrap:balance}
+.lede{margin:0;color:var(--muted);max-width:72ch}
+.diagram{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow-x:auto;padding:8px}
+.diagram svg{display:block;width:100%;min-width:%%MINW%%px;height:auto}
+svg .fuse{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+svg .fuse-t{font:600 14px var(--sans);fill:var(--fg)}
+svg .fuse-s{font:500 12px var(--mono);fill:var(--muted)}
+svg .bus{stroke-width:6;stroke-linecap:round}
+svg .ph{font:600 15px var(--mono)}
+svg .ph-avg{font:500 12px var(--mono);fill:var(--muted)}
+svg .tap{stroke-width:2}
+svg .cond{fill:none;stroke-width:2.5;stroke-linecap:round}
+svg .cond.assumed{stroke-dasharray:6 4}
+svg .box{fill:var(--surface);stroke-width:1.5}
+svg .box.rest{fill:var(--bg);stroke-dasharray:4 3}
+svg .tp-metered{stroke:var(--fg)}
+svg .tp-assumed{stroke:var(--sauna);stroke-dasharray:5 4}
+svg .nm{font:500 11.5px var(--sans);fill:var(--fg)}
+svg .nm.t3{font-weight:600;font-size:12.5px}
+svg .nm.s{fill:var(--sauna)}
+svg .nm.small{font-size:10.5px;fill:var(--muted)}
+svg .w{font:600 13px var(--mono);fill:var(--fg)}
+svg .w.zero{fill:var(--muted)}
+.notes{display:grid;gap:6px;font-size:13.5px;color:var(--muted);max-width:90ch}
+.notes p{margin:0}
+.notes b{color:var(--fg);font-weight:500}
+</style>
+<main>
+  <header>
+    <span class="eyebrow">Home Assistant · average draw %%PERIOD%%</span>
+    <h1>Phase bus diagram</h1>
+    <p class="lede">The three phases from the main fuse as buses, with every metered load branching off the phase it sits on. Numbers are each load's average power over the period above.</p>
+  </header>
+  <div class="diagram">
+%%SVG%%
+  </div>
+  <div class="notes">
+    %%NOTES%%
+  </div>
+</main>

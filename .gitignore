@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+prototype/phase-bus/phase-bus.html
+prototype/phase-bus/loads.json
+node_modules/
+dist/
+.venv/
