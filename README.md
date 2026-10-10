@@ -22,12 +22,49 @@ history when you add a meter. It then gives you:
 
 Everything runs locally inside Home Assistant. There is no cloud service and no extra token.
 
+## Before you start: you need a reliable meter on every phase
+
+> [!IMPORTANT]
+> HA Phase Map only makes sense if Home Assistant already has **trustworthy, frequently
+> updated current or power readings for each phase at the main fuse**. Without that, do not
+> install it: the numbers it produces will be wrong.
+
+Almost everything here is a subtraction: *what the main fuse carries on a phase* minus *what
+your meters account for on that phase*. Any error in the main-fuse reading lands directly in
+"unmetered current", where it looks like a real load. A detector will then switch on (or fail
+to switch on) for no reason, and a heat pump may be blocked when nothing is wrong.
+
+Your main-fuse sensors must:
+
+| Requirement | Why |
+|---|---|
+| **One sensor per phase**, not just a total for the house | Phases are the whole point: a sauna, an oven and an EV charger can each load a different phase |
+| **Measure at the main fuse**, so all the house's consumption passes through it | A meter that misses a sub-panel makes everything on it look unmetered or invisible |
+| **Update often**: every few seconds is ideal, once a minute is the limit | Detectors and the overload warning react to changes; minute-old values make them late |
+| **Be accurate to about 0.1 A** | Small loads (fridges, 40 W) are found from steps of 0.2 A; a meter that rounds to whole amps can only place big loads |
+| **Stay available** | While a main-fuse sensor is unavailable, that phase's sensors are unavailable too |
+| **Be recorded as statistics** (`state_class: measurement`, the default for most power and current sensors) | Phase suggestions and the card's averages read the recorder's long-term statistics |
+
+**Good sources:** a P1/HAN port reader that reports current or power *per phase*, a Shelly
+Pro 3EM (or similar CT meter) on the incoming cables, Tibber Pulse with per-phase values, or a
+load balancer for an EV charger that measures the main fuse (for example Garo Entity Balance).
+
+**Not enough:** a meter that only gives total power for the house, hourly or daily data from
+your electricity supplier, a cloud integration that updates every few minutes, or an
+estimate.
+
+Two more things worth knowing:
+
+- Sensors in **W are converted to amps with the nominal voltage** you enter. Loads with a low
+  power factor (motors, some electronics) draw more current than W / V suggests, so prefer
+  current (A) sensors where you have them, especially for the main fuse.
+- Check the main-fuse readings before you start: switch on something big (a kettle, an oven)
+  and make sure exactly one phase rises by about the right amount within seconds.
+
 ## Requirements
 
 - Home Assistant **2026.10** or newer (tested on 2026.10.0).
-- A sensor per phase at the main fuse, in **A, mA, W or kW**. For example from a P1/HAN port
-  reader, a Shelly Pro 3EM on the incoming cables, Tibber Pulse, or a load balancer such as
-  Garo Entity Balance.
+- **A reliable sensor per phase at the main fuse**, in A, mA, W or kW (see above).
 - Power or current sensors for the loads you want to show. A Shelly Pro 3EM gives one sensor
   per phase; smart plugs give one sensor each.
 - The **recorder** with long-term statistics (the default) for phase suggestions and averages.
