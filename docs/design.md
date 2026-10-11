@@ -3,7 +3,8 @@
 Status: **0.1.0 implemented** (2026-10-10): config entry, load and detector subentries,
 phase suggestion in the load flow, per-phase sensors, overload and detector binary sensors,
 websocket API, and the card in [ha-phase-map-card](https://github.com/JanJoh/ha-phase-map-card).
-Not yet: new-meter discovery (section 6), nested meters (`included_in`), guided test mode.
+**0.2.0** (2026-10-11): nested meters (`parent`, section 3a). Not yet: new-meter discovery
+(section 6), guided test mode.
 Written from a working prototype on one installation (3 × 230 V, 3 × 20 A, ~20 sub-meters).
 
 ## 1. Problem
@@ -62,11 +63,34 @@ Everything runs inside Home Assistant. No cloud, no external token.
 | `name` | `Oven` | display name; `\|` allowed for a two-line label |
 | `kind` | `single` / `multi` | multi = 3-phase (or 2-phase) load |
 | `channels` | `[{phase: L3, entity: sensor.effektmatare_spis_ugn_effekt}]` | one per phase it draws from; a 3-phase meter gives one channel per phase |
-| `included_in` | subentry id | nested meter; subtracted only once (can be imported from the Energy dashboard's `included_in_stat`) |
+| `parent` | subentry id | the meter this load sits behind (section 3a); absent = directly on the main fuse |
 | `assumed` | `false` | true for unmetered loads drawn from an estimate (e.g. sauna 8 kW) |
 | `assumed_w` | `8000` | estimate used for scenarios and the card when `assumed` |
 | `controllable_by` | `garo` / none | informational: the load already limits itself |
 | `detection` | see 5 | confidence, step count, gain, date; null when assigned by hand |
+
+### 3a. Nested meters (0.2.0)
+
+A load's `parent` is another metered load whose meter already includes it, for example
+`Garage incoming` for the CEE outlet, the fan heater and the water heater in the garage.
+
+- **Counting:** only roots (no effective parent) are subtracted from the main fuse. A
+  parent's per-phase **rest** is its own reading minus its direct children's readings, which
+  is what the card shows as "Other". Implemented in `hierarchy.py` and used by both the live
+  engine and the averages.
+- **Effective parent:** the configured parent is ignored (the load becomes a root) when it is
+  missing, estimated, does not measure every phase the load uses, or would close a cycle. The
+  flow prevents all of these; the engine guards against them anyway, because subentries can
+  be removed underneath their children.
+- **Flow:** after the details, a "Measured by" step lists metered loads, pre-selected from the
+  Energy dashboard: the new meter's Energy dashboard entry (matched by entity, or by device if
+  that is unambiguous) has an `included_in_stat`; the load whose channels match that upstream
+  entry's sensors or device is suggested. An upstream entry on the main meter's device means
+  "directly on the main fuse". Reconfigure offers every metered load except the load itself
+  and its descendants.
+- **Phase suggestion behind a parent:** the step analysis runs against the parent's channels
+  (keyed by main-fuse phase), which have far less unrelated load on them than the main fuse,
+  and only the parent's phases are offered.
 
 Why subentries and not labels: they are editable in the UI with validation, carry
 structured fields (channels, nesting, estimates) and belong to the integration. Labels
@@ -168,7 +192,7 @@ computed in the integration (`recorder/statistics_during_period`), not in the br
 | Sources in W, A or VA | per-source unit; VA treated as W with a note |
 | Solar export, negative power | clamp loads at 0; the main fuse uses absolute current |
 | Multi-channel meters (Shelly Pro 3EM, CTs) | one channel entity per phase |
-| Nested meters | `included_in`, imported from Energy dashboard prefs |
+| Nested meters | `parent`, pre-selected from the Energy dashboard's upstream device |
 
 ## 10. Packaging and quality
 

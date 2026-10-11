@@ -30,6 +30,7 @@ from .const import (
     CONF_FUSE_A,
     CONF_MARGIN_A,
     CONF_NAME,
+    CONF_PARENT,
     CONF_PHASES,
     CONF_SOURCES,
     CONF_VOLTAGE,
@@ -38,6 +39,7 @@ from .const import (
     SUBENTRY_DETECTOR,
     SUBENTRY_LOAD,
 )
+from .hierarchy import effective_parents, split
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -71,6 +73,7 @@ class LoadModel:
     channels: dict[str, str]                 # phase -> entity_id
     estimated_w: float | None = None
     estimated_phases: list[str] = field(default_factory=list)
+    parent: str | None = None                # subentry id of the meter this load sits behind
 
     @property
     def phases(self) -> list[str]:
@@ -100,16 +103,19 @@ class PhaseMapEngine:
                 channels={p: e for p, e in sub.data.get(CONF_CHANNELS, {}).items() if e and p in self.phases},
                 estimated_w=sub.data.get(CONF_ESTIMATED_W),
                 estimated_phases=[p for p in sub.data.get(CONF_ESTIMATED_PHASES, []) if p in self.phases],
+                parent=sub.data.get(CONF_PARENT) or None,
             )
             for sub in entry.subentries.values()
             if sub.subentry_type == SUBENTRY_LOAD
         ]
+        self.parents: dict[str, str | None] = effective_parents(self.loads)
         self.detector_ids = [s.subentry_id for s in entry.subentries.values() if s.subentry_type == SUBENTRY_DETECTOR]
         self.snapshot: dict[str, Any] = {}
         self._history: dict[str, deque[float]] = {p: deque(maxlen=BASELINE_WINDOW) for p in self.phases}
         self.baseline: dict[str, float] = {p: 0.0 for p in self.phases}
         self.detectors: dict[str, dict[str, Any]] = {}   # filled in by the detector binary sensors
         self._unsubs: list = []
+        self.device_id: str | None = None   # the fuse device, set at setup
 
     @property
     def tracked_entities(self) -> list[str]:
@@ -157,23 +163,24 @@ class PhaseMapEngine:
     def recompute(self) -> None:
         phases: dict[str, dict[str, Any]] = {}
         load_rows = []
-        metered = {p: 0.0 for p in self.phases}
+        amps = {load.subentry_id: self.load_amps(load) for load in self.loads if not load.estimated}
+        metered, rest = split(self.loads, amps, self.parents, self.phases)
         for load in self.loads:
-            amps = self.load_amps(load) if not load.estimated else {}
-            for p, a in amps.items():
-                if a is not None:
-                    metered[p] += max(a, 0.0)
-            load_rows.append(
-                {
-                    "id": load.subentry_id,
-                    "name": load.name,
-                    "phases": load.phases,
-                    "estimated": load.estimated,
-                    "estimated_w": load.estimated_w,
-                    "a": {p: (round(a, 3) if a is not None else None) for p, a in amps.items()},
-                    "w": {p: (round(max(a, 0.0) * self.voltage) if a is not None else None) for p, a in amps.items()},
-                }
-            )
+            own = amps.get(load.subentry_id, {})
+            row = {
+                "id": load.subentry_id,
+                "name": load.name,
+                "phases": load.phases,
+                "parent": self.parents.get(load.subentry_id),
+                "estimated": load.estimated,
+                "estimated_w": load.estimated_w,
+                "a": {p: (round(a, 3) if a is not None else None) for p, a in own.items()},
+                "w": {p: (round(max(a, 0.0) * self.voltage) if a is not None else None) for p, a in own.items()},
+            }
+            if load.subentry_id in rest:
+                row["rest_w"] = {p: (None if a is None else round(a * self.voltage))
+                                 for p, a in rest[load.subentry_id].items()}
+            load_rows.append(row)
         for p in self.phases:
             total = to_amps(self.hass.states.get(self.sources.get(p, "")), self.voltage)
             if total is not None:

@@ -146,7 +146,7 @@ class DetectorSensor(PhaseMapEntity, BinarySensorEntity):
             manufacturer="HA Phase Map",
             model="Unmetered load detector",
             entry_type=DeviceEntryType.SERVICE,
-            via_device=(DOMAIN, engine.entry.entry_id),
+            via_device_id=engine.device_id,
         )
         self._state = Debounced(
             engine.hass,

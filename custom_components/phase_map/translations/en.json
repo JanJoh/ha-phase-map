@@ -79,7 +79,7 @@
         },
         "meter": {
           "title": "Load with one meter",
-          "description": "Pick the sensor that measures this load (power or current). The next step suggests which phase it is on, based on the last 10 days.",
+          "description": "Pick the sensor that measures this load (power or current). Next you can place it behind another meter, and then pick its phase with a suggestion based on the last 10 days.",
           "data": {
             "name": "Name",
             "entity": "Meter"
@@ -120,14 +120,23 @@
           "data": {
             "name": "Name",
             "estimated_phases": "Phases",
-            "estimated_w": "Estimated power when on"
+            "estimated_w": "Estimated power when on",
+            "parent": "Upstream meter"
+          }
+        },
+        "parent": {
+          "title": "Measured by another meter?",
+          "description": "Is {name} downstream of another meter you have added, for example the meter on the garage's incoming cable? Then it is subtracted from that meter instead of the main fuse, and that meter shows what is left. Pre-selected from the Energy dashboard's upstream device when it has one.",
+          "data": {
+            "parent": "Upstream meter"
           }
         }
       },
       "error": {
         "unsupported_unit": "This sensor must report A, mA, W or kW.",
         "no_meter": "Pick a meter for at least one phase.",
-        "no_phase": "Pick at least one phase."
+        "no_phase": "Pick at least one phase.",
+        "outside_parent": "The upstream meter does not measure every phase this load uses."
       },
       "abort": {
         "reconfigure_successful": "The load was updated."

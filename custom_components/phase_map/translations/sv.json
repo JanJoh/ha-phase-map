@@ -79,7 +79,7 @@
         },
         "meter": {
           "title": "Last med en mätare",
-          "description": "Välj den givare som mäter lasten (effekt eller ström). Nästa steg föreslår vilken fas den sitter på, utifrån de senaste 10 dagarna.",
+          "description": "Välj den givare som mäter lasten (effekt eller ström). Sedan kan du placera den efter en annan mätare och välja fas, med ett förslag utifrån de senaste 10 dagarna.",
           "data": {
             "name": "Namn",
             "entity": "Mätare"
@@ -120,14 +120,23 @@
           "data": {
             "name": "Namn",
             "estimated_phases": "Faser",
-            "estimated_w": "Uppskattad effekt när den är på"
+            "estimated_w": "Uppskattad effekt när den är på",
+            "parent": "Överordnad mätare"
+          }
+        },
+        "parent": {
+          "title": "Mäts av en annan mätare?",
+          "description": "Sitter {name} efter en annan mätare du har lagt till, till exempel mätaren på garagets inkommande kabel? Då dras den från den mätaren i stället för från huvudsäkringen, och mätaren visar det som blir kvar. Förvalt från energipanelens överordnade enhet när den har en.",
+          "data": {
+            "parent": "Överordnad mätare"
           }
         }
       },
       "error": {
         "unsupported_unit": "Givaren måste rapportera A, mA, W eller kW.",
         "no_meter": "Välj en mätare för minst en fas.",
-        "no_phase": "Välj minst en fas."
+        "no_phase": "Välj minst en fas.",
+        "outside_parent": "Den överordnade mätaren mäter inte alla faser som den här lasten använder."
       },
       "abort": {
         "reconfigure_successful": "Lasten uppdaterades."

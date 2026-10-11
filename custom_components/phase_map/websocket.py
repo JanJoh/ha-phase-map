@@ -17,6 +17,7 @@ import voluptuous as vol
 
 from .const import DOMAIN, SIGNAL_UPDATE
 from .detection import async_fetch_means, async_suggest_phase
+from .hierarchy import split
 
 
 @callback
@@ -92,16 +93,20 @@ async def ws_average(hass: HomeAssistant, connection: websocket_api.ActiveConnec
         return sum(series.values()) / len(series) if series else None
 
     v = engine.voltage
+    amps = {
+        load.subentry_id: {p: avg_amps(e) for p, e in load.channels.items()}
+        for load in engine.loads
+        if not load.estimated
+    }
+    metered, rest = split(engine.loads, amps, engine.parents, engine.phases)
     loads = []
-    metered = {p: 0.0 for p in engine.phases}
     for load in engine.loads:
-        w = {}
-        for p, e in load.channels.items():
-            a = avg_amps(e)
-            w[p] = None if a is None else round(max(a, 0.0) * v)
-            if a is not None:
-                metered[p] += max(a, 0.0)
-        loads.append({"id": load.subentry_id, "w": w})
+        own = amps.get(load.subentry_id, {})
+        row: dict[str, Any] = {"id": load.subentry_id,
+                               "w": {p: None if a is None else round(max(a, 0.0) * v) for p, a in own.items()}}
+        if load.subentry_id in rest:
+            row["rest_w"] = {p: None if a is None else round(a * v) for p, a in rest[load.subentry_id].items()}
+        loads.append(row)
     phases = {}
     for p in engine.phases:
         a = avg_amps(engine.sources.get(p, ""))

@@ -68,7 +68,11 @@ async def test_multi_and_estimated(hass: HomeAssistant, main_fuse_states) -> Non
     result = await hass.config_entries.subentries.async_configure(
         result["flow_id"], {"name": "Sauna", "estimated_phases": ["L1", "L2", "L3"], "estimated_w": 8000}
     )
+    # EV is a metered load now, so the flow asks whether the sauna sits behind it
+    assert result["step_id"] == "parent"
+    result = await hass.config_entries.subentries.async_configure(result["flow_id"], {"parent": "none"})
     assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert "parent" not in next(s for s in entry.subentries.values() if s.title == "Sauna").data
     names = sorted(s.title for s in entry.subentries.values())
     assert names == ["EV", "Sauna"]
 

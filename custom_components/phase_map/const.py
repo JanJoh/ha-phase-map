@@ -22,6 +22,8 @@ CONF_NAME = "name"
 CONF_CHANNELS = "channels"        # {phase: entity_id}
 CONF_ESTIMATED_W = "estimated_w"  # estimated power for unmetered loads (W, total)
 CONF_ESTIMATED_PHASES = "estimated_phases"
+CONF_PARENT = "parent"            # subentry id of the meter this load sits behind, if any
+NO_PARENT = "none"
 
 # Detector subentry
 CONF_DETECT_PHASES = "detect_phases"

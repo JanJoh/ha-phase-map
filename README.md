@@ -97,11 +97,33 @@ Then, on the HA Phase Map entry, add:
   stove measured by a Shelly Pro 3EM.
 - **Load → A load without a meter (estimated)**: name, phases and estimated power. It is drawn
   dashed on the card.
+- **Measured by** (asked after the details when you have other meters): if the load sits
+  behind another meter you have added, pick that meter. See below.
 - **Detector**: phases, minimum extra current per phase (an 8 kW three-phase sauna adds about
   11 A per phase), and delays. The off-delay keeps it on while a thermostat cycles.
 
 Use **⋮ → Reconfigure** to change the fuse or its sensors, and **Configure** for the overload
 warning margin and delay.
+
+### Meters behind other meters
+
+Some meters measure a whole branch: the incoming cable to a garage, an outbuilding or a
+sub-panel. The loads in that branch can have meters of their own (a CEE outlet, a heater, a
+water heater). Add the branch meter first, as a normal load, then add the loads inside it and
+choose the branch meter under **Measured by**.
+
+- Only meters with nothing above them are subtracted from the main fuse, so a load inside the
+  garage is not counted twice.
+- The garage's own rest (lights, sockets) is what its meter measures beyond the meters
+  behind it. The card shows it as **Other** under the garage.
+- If the Energy dashboard already lists the garage as the meter's **upstream device**, it is
+  pre-selected. The match is made on the meter's own sensors or, failing that, on the device
+  they belong to.
+- The phase suggestion then compares the new meter with the garage's channels instead of the
+  main fuse, and only the phases the garage meter measures are offered. A load must use only
+  phases its parent measures.
+
+Use **⋮ → Reconfigure** on a load to move it behind another meter or back onto the main fuse.
 
 ### How the phase suggestion works
 
