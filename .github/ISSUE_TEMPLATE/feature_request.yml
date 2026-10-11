@@ -1,0 +1,15 @@
+name: Suggestion
+description: An idea for the integration
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like, and what would it help with?
+    validations:
+      required: true
+  - type: textarea
+    id: setup
+    attributes:
+      label: Your setup (optional)
+      description: Phases, fuse size, main-fuse meter, the loads it concerns.

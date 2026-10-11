@@ -38,3 +38,18 @@ jobs:
       - run: pip install -r requirements_test.txt ruff
       - run: ruff check custom_components tests
       - run: pytest -q
+
+  bundled-card:
+    # The integration serves a copy of the card (scripts/sync_card.sh). Once the card repository
+    # is public, fail when the copy differs from its main branch.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          url=https://raw.githubusercontent.com/JanJoh/ha-phase-map-card/main/dist/phase-bus-card.js
+          if ! curl -fsSL "$url" -o upstream.js; then
+            echo "Card repository not readable (private?): skipping the comparison"; exit 0
+          fi
+          cmp upstream.js custom_components/phase_map/frontend/phase-bus-card.js \
+            || { echo "::error::Bundled card differs from ha-phase-map-card main: run scripts/sync_card.sh"; exit 1; }

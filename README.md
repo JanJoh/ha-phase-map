@@ -17,8 +17,8 @@ history when you add a meter. It then gives you:
 - **Unmetered load detectors**: a binary sensor that turns on when unmetered current rises on
   the phases you choose. A three-phase sauna is the classic case: use the detector to block a
   heat pump while the sauna runs, so the main fuse does not blow.
-- **A dashboard card** that draws it all as a single-line diagram:
-  [HA Phase Map Card](https://github.com/JanJoh/ha-phase-map-card) (separate repository).
+- **A dashboard card** that draws it all as a single-line diagram. It comes with the
+  integration; its source is [HA Phase Map Card](https://github.com/JanJoh/ha-phase-map-card).
 
 Everything runs locally inside Home Assistant. There is no cloud service and no extra token.
 
@@ -77,6 +77,10 @@ The repository is private while it is being tested, so install it manually for n
 
 1. Copy `custom_components/phase_map` into your Home Assistant `config/custom_components/`.
 2. Restart Home Assistant.
+
+The dashboard card is included and loaded automatically: there is no separate card to install
+and no dashboard resource to add. (If you installed the card on its own earlier, you can remove
+that resource; leaving it does no harm.)
 
 Once public, it will be installable through HACS as a custom repository.
 
@@ -242,7 +246,7 @@ automation:
 
 ![Phase bus card, dark theme](docs/images/card-dark.png)
 
-Install [HA Phase Map Card](https://github.com/JanJoh/ha-phase-map-card) and add:
+The card is part of the integration. Add it from the card picker (**Phase Bus Card**) or in YAML:
 
 ```yaml
 type: custom:phase-bus-card
@@ -264,7 +268,9 @@ The card uses these commands; other frontends can too.
 
 ## Known issues
 
-See [the issue tracker](https://github.com/JanJoh/ha-phase-map/issues) for known issues, and to
+When something looks wrong, **Settings → Devices & services → HA Phase Map → ⋮ → Download
+diagnostics** gives a file with your configuration, the live values and the evidence behind
+them; attach it to the issue. See [the issue tracker](https://github.com/JanJoh/ha-phase-map/issues) for known issues, and to
 report a problem or suggest something. Home Assistant links there too, from the integration's
 page (**⋮ → Known issues**).
 
@@ -277,7 +283,9 @@ pip install -r requirements_test.txt
 pytest
 ```
 
-`docs/design.md` describes the design; `prototype/` holds the analysis scripts and the
+The card is developed in [ha-phase-map-card](https://github.com/JanJoh/ha-phase-map-card); the
+copy served by the integration is updated with `scripts/sync_card.sh`, and a test checks that it
+was not edited by hand. `docs/design.md` describes the design; `prototype/` holds the analysis scripts and the
 original diagram generator.
 
 ## License

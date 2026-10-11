@@ -1,0 +1,51 @@
+name: Bug report
+description: Something does not work or shows the wrong values
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing! Card problems (layout, drawing, editor): [ha-phase-map-card issues](https://github.com/JanJoh/ha-phase-map-card/issues).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+      description: Include the load or phase it concerns, and when it happened.
+    validations:
+      required: true
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home Assistant version
+      placeholder: "2026.10.0"
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: HA Phase Map version (and card version if you installed it separately)
+      description: Settings → Devices & services → HA Phase Map shows the integration version.
+      placeholder: "0.7.0"
+    validations:
+      required: true
+  - type: input
+    id: main_meter
+    attributes:
+      label: Main-fuse meter
+      description: What measures the phases at the main fuse, and how often does it update?
+      placeholder: "Shelly Pro 3EM on the incoming cables, every 2 s"
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: >-
+        Settings → Devices & services → HA Phase Map → ⋮ → Download diagnostics, then drag the
+        file here. It has your configuration, the live values and the phase-check evidence.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log lines
+      description: Anything from Settings → System → Logs that mentions phase_map.
+      render: text

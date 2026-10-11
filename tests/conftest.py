@@ -17,6 +17,13 @@ def auto_enable_custom_integrations(enable_custom_integrations):
     yield
 
 
+@pytest.fixture(autouse=True)
+def no_update_throttle(request, monkeypatch):
+    """Recompute on every change in tests, unless a test is about the throttle itself."""
+    if "throttle" not in request.node.name:
+        monkeypatch.setattr("custom_components.phase_map.engine.UPDATE_INTERVAL_S", 0)
+
+
 def set_amps(hass: HomeAssistant, entity_id: str, value: float, unit: str = "A") -> None:
     hass.states.async_set(entity_id, str(value), {"unit_of_measurement": unit,
                                                  "device_class": "current" if unit in ("A", "mA") else "power"})

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.7.0 (unreleased)
+
+- **The card is included.** The integration serves the phase-bus card and loads it in the
+  frontend itself: one install, no dashboard resource to add. The URL carries a hash of the
+  file, so browsers pick up a new card after an update. A separately installed copy of the card
+  does no harm; the first one loaded is used.
+- **Diagnostics download** (⋮ → Download diagnostics): configuration, how loads nest, the live
+  values, phase-check evidence, verified phases and every meter's state, for bug reports.
+- **At most one update per second.** Meters that report every second no longer trigger a
+  recompute, a state write per sensor and a push to every open card each time; the first change
+  is handled at once and the latest one at the end of the second.
+- Issue templates for bug reports and suggestions.
+
 ## 0.6.0 (unreleased)
 
 - **Verified phases.** For every multi-phase load, the payload lists the phases it has been

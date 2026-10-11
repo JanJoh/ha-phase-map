@@ -58,6 +58,9 @@ VERIFY_SHARE = 0.2        # one meter for several phases: the phase moved by thi
 VERIFY_EVENTS = 2         # ... in this many live events
 VERIFY_HISTORY_DAYS = 30
 
+# Meters can report every second; recompute (and push to the card) at most this often.
+UPDATE_INTERVAL_S = 1.0
+
 
 def to_amps(state: State | None, voltage: float) -> float | None:
     """Convert a sensor state (A, mA, W, kW) to amps. None when unavailable."""
@@ -172,6 +175,8 @@ class PhaseMapEngine:
         }
         self._verify_hits: dict[str, dict[str, int]] = {lid: {} for lid in self.verified}
         self._seed_task = None
+        self._last_compute = 0.0
+        self._recompute_timer = None
 
     # --- phase check ---------------------------------------------------------------
 
@@ -364,6 +369,9 @@ class PhaseMapEngine:
         for cancel in self._pending:
             cancel()
         self._pending.clear()
+        if self._recompute_timer is not None:
+            self._recompute_timer()
+            self._recompute_timer = None
         if self._seed_task is not None and not self._seed_task.done():
             self._seed_task.cancel()
 
@@ -386,7 +394,7 @@ class PhaseMapEngine:
 
             cancel = async_call_later(self.hass, POST_S, _evaluate)
             self._pending.add(cancel)
-        self.recompute()
+        self._schedule_recompute()
 
     @callback
     def _sample_baseline(self, _now=None) -> None:
@@ -405,7 +413,28 @@ class PhaseMapEngine:
         return amps_for(load, lambda e: to_amps(self.hass.states.get(e), self.voltage))
 
     @callback
+    def _schedule_recompute(self) -> None:
+        """Recompute now if the last one was long enough ago, otherwise once at the end of the window."""
+        if UPDATE_INTERVAL_S <= 0:
+            self.recompute()
+            return
+        if self._recompute_timer is not None:
+            return
+        wait = self._last_compute + UPDATE_INTERVAL_S - dt_util.utcnow().timestamp()
+        if wait <= 0:
+            self.recompute()
+            return
+
+        @callback
+        def _trailing(_now) -> None:
+            self._recompute_timer = None
+            self.recompute()
+
+        self._recompute_timer = async_call_later(self.hass, wait, _trailing)
+
+    @callback
     def recompute(self) -> None:
+        self._last_compute = dt_util.utcnow().timestamp()
         phases: dict[str, dict[str, Any]] = {}
         load_rows = []
         amps = {load.subentry_id: self.load_amps(load) for load in self.loads if not load.estimated}
