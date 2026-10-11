@@ -125,6 +125,25 @@ choose the branch meter under **Measured by**.
 
 Use **⋮ → Reconfigure** on a load to move it behind another meter or back onto the main fuse.
 
+### When a load moves to another phase
+
+Plug the kettle into a socket on another phase and its power would be subtracted from the
+wrong phase. HA Phase Map checks every single-phase load continuously: each time it switches
+on or off (a step of at least 0.5 A), it looks at which phase of the main fuse, or of the
+meter it sits behind, moved by about the same amount within the next 10 seconds. Events where
+another meter moved at the same time are skipped.
+
+- When 5 of the last 6 clear events point at another phase, a **Repair** appears under
+  **Settings → System → Repairs**: "Kettle seems to have moved to L3". Confirm it to move the
+  load, or ignore it if the load really is where you configured it.
+- For things that are moved around on purpose, tick **Portable** when adding or editing the
+  load. A portable load follows the evidence without asking, and the move is written to the
+  logbook.
+- The card marks a load whose phase looks wrong with "⚠ L3?".
+
+Loads that rarely switch (a UPS) or draw less than about 0.5 A cannot be checked this way.
+The check relies on main-fuse readings that update within seconds (see *Before you start*).
+
 ### How the phase suggestion works
 
 Every time a meter steps up or down, the main-fuse phase it sits on should step by about the

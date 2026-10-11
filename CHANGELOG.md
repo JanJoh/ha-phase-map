@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.0 (unreleased)
+
+- **Phase check.** Every single-phase load's phase is checked continuously from live
+  switch-on and switch-off events (steps of 0.5 A or more): the reference phase that moved
+  by about the same current, while the others stayed flat, is where the load is. Events where
+  another meter moved at the same time are skipped. Loads behind a parent are checked against
+  the parent's channels.
+- When 5 of the last 6 events point at another phase, a **Repair** asks to move the load
+  ("Kettle seems to have moved to L3"); confirming updates it. Evidence that points back at
+  the configured phase clears the repair.
+- **Portable loads**: a new option for single-meter loads that are moved between sockets.
+  They follow the evidence without asking, and the move is written to the logbook.
+- The websocket payload has a `phase_check` per single-phase load (configured phase, events
+  agreeing and disagreeing, suspected phase, last event).
+
 ## 0.2.0 (unreleased)
 
 - **Meters behind other meters.** A load can be placed behind another meter, for example a

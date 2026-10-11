@@ -16,8 +16,9 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN, UnitOfElectricCurrent, UnitOfPower
 from homeassistant.core import Event, EventStateChangedData, HomeAssistant, State, callback
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.dispatcher import async_dispatcher_send
-from homeassistant.helpers.event import async_track_state_change_event, async_track_time_interval
+from homeassistant.helpers.event import async_call_later, async_track_state_change_event, async_track_time_interval
 from homeassistant.util import dt as dt_util
 
 from .const import (
@@ -32,14 +33,17 @@ from .const import (
     CONF_NAME,
     CONF_PARENT,
     CONF_PHASES,
+    CONF_PORTABLE,
     CONF_SOURCES,
     CONF_VOLTAGE,
     DEFAULT_MARGIN_A,
+    DOMAIN,
     SIGNAL_UPDATE,
     SUBENTRY_DETECTOR,
     SUBENTRY_LOAD,
 )
-from .hierarchy import effective_parents, split
+from .hierarchy import descendants, effective_parents, split
+from .phase_check import POST_S, LoadCheck, PhaseChecker
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -74,6 +78,7 @@ class LoadModel:
     estimated_w: float | None = None
     estimated_phases: list[str] = field(default_factory=list)
     parent: str | None = None                # subentry id of the meter this load sits behind
+    portable: bool = False                   # follow it to a new phase without asking
 
     @property
     def phases(self) -> list[str]:
@@ -104,6 +109,7 @@ class PhaseMapEngine:
                 estimated_w=sub.data.get(CONF_ESTIMATED_W),
                 estimated_phases=[p for p in sub.data.get(CONF_ESTIMATED_PHASES, []) if p in self.phases],
                 parent=sub.data.get(CONF_PARENT) or None,
+                portable=bool(sub.data.get(CONF_PORTABLE)),
             )
             for sub in entry.subentries.values()
             if sub.subentry_type == SUBENTRY_LOAD
@@ -116,6 +122,86 @@ class PhaseMapEngine:
         self.detectors: dict[str, dict[str, Any]] = {}   # filled in by the detector binary sensors
         self._unsubs: list = []
         self.device_id: str | None = None   # the fuse device, set at setup
+        self.checker = self._build_checker()
+        self._pending: set = set()          # phase-check evaluations waiting for POST_S
+
+    # --- phase check ---------------------------------------------------------------
+
+    def _build_checker(self) -> PhaseChecker:
+        """One check per single-phase metered load, against its parent or the main fuse."""
+        by_id = {load.subentry_id: load for load in self.loads}
+        checks = []
+        ignore: dict[str, set[str]] = {}
+        for load in self.loads:
+            if len(load.channels) != 1:
+                continue
+            parent = self.parents.get(load.subentry_id)
+            reference = dict(by_id[parent].channels) if parent else dict(self.sources)
+            (phase, entity), = load.channels.items()
+            checks.append(LoadCheck(load.subentry_id, phase, list(reference), reference, entity))
+            # Meters that move with this load are not confounders: its ancestors, its
+            # descendants and the main fuse.
+            skip = set(self.sources.values())
+            up = parent
+            while up:
+                skip.update(by_id[up].channels.values())
+                up = self.parents.get(up)
+            for child in descendants(self.loads, load.subentry_id):
+                if child in by_id:
+                    skip.update(by_id[child].channels.values())
+            ignore[load.subentry_id] = skip
+        checker = PhaseChecker(checks, self._on_phase_verdict, clock=lambda: dt_util.utcnow().timestamp())
+        checker.ignore_for = ignore
+        return checker
+
+    def _issue_id(self, load_id: str) -> str:
+        return f"moved_{self.entry.entry_id}_{load_id}"
+
+    def _restore_issues(self) -> None:
+        """Keep open move reports that still apply; drop the ones that no longer do."""
+        registry = ir.async_get(self.hass)
+        prefix = f"moved_{self.entry.entry_id}_"
+        for (domain, issue_id), issue in list(registry.issues.items()):
+            if domain != DOMAIN or not issue_id.startswith(prefix):
+                continue
+            load_id = issue_id[len(prefix):]
+            check = self.checker.checks.get(load_id)
+            data = issue.data or {}
+            if check is None or check.configured != data.get("from") or data.get("to") not in check.allowed:
+                ir.async_delete_issue(self.hass, DOMAIN, issue_id)
+            else:
+                check.suspected = data.get("to")
+
+    @callback
+    def _on_phase_verdict(self, check: LoadCheck) -> None:
+        load = next(item for item in self.loads if item.subentry_id == check.load_id)
+        issue_id = self._issue_id(load.subentry_id)
+        if check.suspected is None:
+            ir.async_delete_issue(self.hass, DOMAIN, issue_id)
+            self.recompute()
+            return
+        votes = sum(1 for v in check.votes if v == check.suspected)
+        if load.portable:
+            _LOGGER.info("%s moved from %s to %s (%s of %s switch events); following it",
+                         load.name, check.configured, check.suspected, votes, len(check.votes))
+            self.hass.bus.async_fire("logbook_entry", {
+                "name": load.name, "domain": DOMAIN,
+                "message": f"moved from {check.configured} to {check.suspected}; HA Phase Map follows it",
+            })
+            self.hass.async_create_task(async_move_load(self.hass, self.entry.entry_id, load.subentry_id,
+                                                        check.suspected))
+            return
+        ir.async_create_issue(
+            self.hass, DOMAIN, issue_id,
+            is_fixable=True,
+            severity=ir.IssueSeverity.WARNING,
+            translation_key="load_moved",
+            translation_placeholders={"name": load.name, "from": check.configured, "to": check.suspected,
+                                      "votes": str(votes), "events": str(len(check.votes))},
+            data={"entry_id": self.entry.entry_id, "subentry_id": load.subentry_id, "name": load.name,
+                  "from": check.configured, "to": check.suspected},
+        )
+        self.recompute()
 
     @property
     def tracked_entities(self) -> list[str]:
@@ -125,6 +211,9 @@ class PhaseMapEngine:
         return sorted(ids)
 
     async def async_start(self) -> None:
+        for entity_id in self.tracked_entities:
+            self.checker.record(entity_id, to_amps(self.hass.states.get(entity_id), self.voltage))
+        self._restore_issues()
         self._unsubs.append(
             async_track_state_change_event(self.hass, self.tracked_entities, self._on_state_change)
         )
@@ -138,9 +227,27 @@ class PhaseMapEngine:
         for unsub in self._unsubs:
             unsub()
         self._unsubs.clear()
+        for cancel in self._pending:
+            cancel()
+        self._pending.clear()
 
     @callback
     def _on_state_change(self, event: Event[EventStateChangedData]) -> None:
+        entity_id = event.data["entity_id"]
+        new = to_amps(event.data["new_state"], self.voltage)
+        old = to_amps(event.data["old_state"], self.voltage)
+        self.checker.record(entity_id, new)
+        t_step = self.checker.step(entity_id, old, new)
+        if t_step is not None:
+            step_a = new - old
+
+            @callback
+            def _evaluate(_now) -> None:
+                self._pending.discard(cancel)
+                self.checker.evaluate(entity_id, t_step, step_a, dt_util.utcnow())
+
+            cancel = async_call_later(self.hass, POST_S, _evaluate)
+            self._pending.add(cancel)
         self.recompute()
 
     @callback
@@ -177,6 +284,8 @@ class PhaseMapEngine:
                 "a": {p: (round(a, 3) if a is not None else None) for p, a in own.items()},
                 "w": {p: (round(max(a, 0.0) * self.voltage) if a is not None else None) for p, a in own.items()},
             }
+            if (check := self.checker.checks.get(load.subentry_id)) is not None:
+                row["phase_check"] = check.as_dict()
             if load.subentry_id in rest:
                 row["rest_w"] = {p: (None if a is None else round(a * self.voltage))
                                  for p, a in rest[load.subentry_id].items()}
@@ -229,3 +338,15 @@ class PhaseMapEngine:
                 ordered = sorted(self._history[p])
                 self.baseline[p] = ordered[int(BASELINE_QUANTILE * (len(ordered) - 1))]
 
+
+
+async def async_move_load(hass: HomeAssistant, entry_id: str, subentry_id: str, phase: str) -> bool:
+    """Put a single-phase load on another phase (reloads the entry)."""
+    entry = hass.config_entries.async_get_entry(entry_id)
+    sub = entry.subentries.get(subentry_id) if entry else None
+    channels = dict(sub.data.get(CONF_CHANNELS, {})) if sub else {}
+    if sub is None or len(channels) != 1:
+        return False
+    (_, entity), = channels.items()
+    hass.config_entries.async_update_subentry(entry, sub, data={**sub.data, CONF_CHANNELS: {phase: entity}})
+    return True

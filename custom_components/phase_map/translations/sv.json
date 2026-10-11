@@ -89,14 +89,22 @@
           "title": "Vilken fas?",
           "description": "{name} sitter troligen på **{phase}** ({confidence} säkerhet: {steps} till/från-steg, förstärkning {gain}). Ändra om du vet bättre.",
           "data": {
-            "phase": "Fas"
+            "phase": "Fas",
+            "portable": "Flyttbar: följ med när den flyttas till en annan fas"
+          },
+          "data_description": {
+            "portable": "För något som flyttas mellan uttag (ett element, en vattenkokare). HA Phase Map följer när den slås på och av; visar det tydligt en annan fas flyttas lasten dit automatiskt. Annars frågar den under Inställningar → Reparationer."
           }
         },
         "phase_manual": {
           "title": "Vilken fas?",
           "description": "Historiken kunde inte avgöra vilken fas {name} sitter på ({steps} användbara till/från-steg de senaste 10 dagarna). Välj fas själv, eller kom tillbaka när den har slagits på och av några gånger.",
           "data": {
-            "phase": "Fas"
+            "phase": "Fas",
+            "portable": "Flyttbar: följ med när den flyttas till en annan fas"
+          },
+          "data_description": {
+            "portable": "För något som flyttas mellan uttag (ett element, en vattenkokare). HA Phase Map följer när den slås på och av; visar det tydligt en annan fas flyttas lasten dit automatiskt. Annars frågar den under Inställningar → Reparationer."
           }
         },
         "multi": {
@@ -121,7 +129,11 @@
             "name": "Namn",
             "estimated_phases": "Faser",
             "estimated_w": "Uppskattad effekt när den är på",
-            "parent": "Överordnad mätare"
+            "parent": "Överordnad mätare",
+            "portable": "Flyttbar: följ med när den flyttas till en annan fas"
+          },
+          "data_description": {
+            "portable": "För något som flyttas mellan uttag (ett element, en vattenkokare). HA Phase Map följer när den slås på och av; visar det tydligt en annan fas flyttas lasten dit automatiskt. Annars frågar den under Inställningar → Reparationer."
           }
         },
         "parent": {
@@ -195,6 +207,22 @@
     "binary_sensor": {
       "overload": {
         "name": "{phase} överlastrisk"
+      }
+    }
+  },
+  "issues": {
+    "load_moved": {
+      "title": "{name} verkar ha flyttats till {to}",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Flytta {name} till {to}?",
+            "description": "När {name} slogs på eller av nyligen ändrades huvudsäkringen (eller mätaren den sitter efter) på **{to}**, inte på {from} där den är inställd. Den har troligen kopplats in i ett uttag på en annan fas.\n\nFlytta den till {to}? Sitter den trots allt på {from} kan du ignorera den här reparationen."
+          }
+        },
+        "abort": {
+          "load_gone": "Lasten finns inte längre eller är inte längre en enfaslast."
+        }
       }
     }
   }

@@ -32,6 +32,7 @@ from .const import (
     CONF_PARENT,
     CONF_PHASE_COUNT,
     CONF_PHASES,
+    CONF_PORTABLE,
     CONF_SOURCES,
     CONF_VOLTAGE,
     DEFAULT_FUSE_A,
@@ -332,11 +333,19 @@ class LoadSubentryFlow(ConfigSubentryFlow):
         meter = next(iter(self._data[CONF_CHANNELS].values()))
         options = list(self._parent_channels(self._parent)) or self._phases
         if user_input is not None:
-            return self._create({CONF_NAME: name, CONF_CHANNELS: {user_input["phase"]: meter}})
+            data = {CONF_NAME: name, CONF_CHANNELS: {user_input["phase"]: meter}}
+            if user_input.get(CONF_PORTABLE):
+                data[CONF_PORTABLE] = True
+            return self._create(data)
         sug = self._suggestion
         found = bool(sug and sug.phase and sug.phase in options)
         default = sug.phase if found else options[0]
-        schema = vol.Schema({vol.Required("phase", default=default): _phase_select(options, multiple=False)})
+        schema = vol.Schema(
+            {
+                vol.Required("phase", default=default): _phase_select(options, multiple=False),
+                vol.Optional(CONF_PORTABLE, default=False): selector.BooleanSelector(),
+            }
+        )
         if found:
             score = sug.scores[sug.phase]
             lang = "sv" if (self.hass.config.language or "").startswith("sv") else "en"
@@ -423,7 +432,10 @@ class LoadSubentryFlow(ConfigSubentryFlow):
                     **parent_field,
                 }
             )
-            current = {CONF_NAME: subentry.data.get(CONF_NAME, subentry.title), **subentry.data.get(CONF_CHANNELS, {})}
+            current = {CONF_NAME: subentry.data.get(CONF_NAME, subentry.title), **subentry.data.get(CONF_CHANNELS, {}),
+                       CONF_PORTABLE: bool(subentry.data.get(CONF_PORTABLE))}
+            if len(subentry.data.get(CONF_CHANNELS, {})) == 1:
+                schema = schema.extend({vol.Optional(CONF_PORTABLE): selector.BooleanSelector()})
         current[CONF_PARENT] = subentry.data.get(CONF_PARENT) or NO_PARENT
         if user_input is not None:
             if estimated:
@@ -440,6 +452,8 @@ class LoadSubentryFlow(ConfigSubentryFlow):
                     if not _unit_ok(self.hass, e):
                         errors[p] = "unsupported_unit"
                 data = {CONF_NAME: user_input[CONF_NAME], CONF_CHANNELS: channels}
+                if user_input.get(CONF_PORTABLE) and len(channels) == 1:
+                    data[CONF_PORTABLE] = True
             parent = user_input.get(CONF_PARENT)
             parent = None if parent in (None, NO_PARENT) else parent
             if parent and self._outside_parent(self._phases_of(data), parent):

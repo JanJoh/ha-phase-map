@@ -24,6 +24,7 @@ CONF_ESTIMATED_W = "estimated_w"  # estimated power for unmetered loads (W, tota
 CONF_ESTIMATED_PHASES = "estimated_phases"
 CONF_PARENT = "parent"            # subentry id of the meter this load sits behind, if any
 NO_PARENT = "none"
+CONF_PORTABLE = "portable"        # follow the load to a new phase without asking
 
 # Detector subentry
 CONF_DETECT_PHASES = "detect_phases"

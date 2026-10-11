@@ -89,14 +89,22 @@
           "title": "Which phase?",
           "description": "{name} is probably on **{phase}** ({confidence} confidence: {steps} on/off steps, gain {gain}). Change it if you know better.",
           "data": {
-            "phase": "Phase"
+            "phase": "Phase",
+            "portable": "Portable: follow it when it moves to another phase"
+          },
+          "data_description": {
+            "portable": "For something that is moved between sockets (a space heater, a kettle). HA Phase Map watches its switch-on and switch-off events; when they clearly show another phase, it moves the load there by itself. Otherwise it asks under Settings → Repairs."
           }
         },
         "phase_manual": {
           "title": "Which phase?",
           "description": "History could not tell which phase {name} is on ({steps} usable on/off steps in the last 10 days). Pick the phase, or come back after it has been switched on and off a few times.",
           "data": {
-            "phase": "Phase"
+            "phase": "Phase",
+            "portable": "Portable: follow it when it moves to another phase"
+          },
+          "data_description": {
+            "portable": "For something that is moved between sockets (a space heater, a kettle). HA Phase Map watches its switch-on and switch-off events; when they clearly show another phase, it moves the load there by itself. Otherwise it asks under Settings → Repairs."
           }
         },
         "multi": {
@@ -121,7 +129,11 @@
             "name": "Name",
             "estimated_phases": "Phases",
             "estimated_w": "Estimated power when on",
-            "parent": "Upstream meter"
+            "parent": "Upstream meter",
+            "portable": "Portable: follow it when it moves to another phase"
+          },
+          "data_description": {
+            "portable": "For something that is moved between sockets (a space heater, a kettle). HA Phase Map watches its switch-on and switch-off events; when they clearly show another phase, it moves the load there by itself. Otherwise it asks under Settings → Repairs."
           }
         },
         "parent": {
@@ -195,6 +207,22 @@
     "binary_sensor": {
       "overload": {
         "name": "{phase} overload risk"
+      }
+    }
+  },
+  "issues": {
+    "load_moved": {
+      "title": "{name} seems to have moved to {to}",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Move {name} to {to}?",
+            "description": "When {name} switched on or off recently, the main fuse (or the meter it sits behind) changed on **{to}**, not on {from} where it is configured. It has probably been plugged into a socket on another phase.\n\nMove it to {to}? If it is on {from} after all, ignore this repair instead."
+          }
+        },
+        "abort": {
+          "load_gone": "The load no longer exists or is no longer a single-phase load."
+        }
       }
     }
   }
