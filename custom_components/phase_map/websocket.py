@@ -17,6 +17,7 @@ import voluptuous as vol
 
 from .const import DOMAIN, SIGNAL_UPDATE
 from .detection import async_fetch_means, async_suggest_phase
+from .engine import amps_for
 from .hierarchy import split
 
 
@@ -94,7 +95,7 @@ async def ws_average(hass: HomeAssistant, connection: websocket_api.ActiveConnec
 
     v = engine.voltage
     amps = {
-        load.subentry_id: {p: avg_amps(e) for p, e in load.channels.items()}
+        load.subentry_id: amps_for(load, avg_amps)
         for load in engine.loads
         if not load.estimated
     }

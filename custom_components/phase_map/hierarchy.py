@@ -39,7 +39,7 @@ def effective_parents(loads: list[_Load]) -> dict[str, str | None]:
             parent is not None
             and parent.subentry_id != load.subentry_id
             and not parent.estimated
-            and set(load.phases) <= set(parent.channels)
+            and set(load.phases) <= set(parent.phases)
         )
         out[load.subentry_id] = parent.subentry_id if ok else None
     for load_id in out:

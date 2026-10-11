@@ -88,6 +88,12 @@
         "2": "2 faser (delad fas)",
         "3": "3 faser"
       }
+    },
+    "draw": {
+      "options": {
+        "phase": "Allt på fasen ovan",
+        "equal": "Jämnt fördelat över de anslutna faserna"
+      }
     }
   },
   "config_subentries": {
@@ -120,10 +126,14 @@
           "description": "{name} sitter troligen på **{phase}** ({confidence} säkerhet: {steps} till/från-steg, förstärkning {gain}). Ändra om du vet bättre.",
           "data": {
             "phase": "Fas",
-            "portable": "Flyttbar: följ med när den flyttas till en annan fas"
+            "portable": "Flyttbar: följ med när den flyttas till en annan fas",
+            "connected_phases": "Också ansluten till",
+            "draw": "Effekten räknas"
           },
           "data_description": {
-            "portable": "För något som flyttas mellan uttag (ett element, en vattenkokare). HA Phase Map följer när den slås på och av; visar det tydligt en annan fas flyttas lasten dit automatiskt. Annars frågar den under Inställningar → Reparationer."
+            "portable": "För något som flyttas mellan uttag (ett element, en vattenkokare). HA Phase Map följer när den slås på och av; visar det tydligt en annan fas flyttas lasten dit automatiskt. Annars frågar den under Inställningar → Reparationer.",
+            "connected_phases": "Bara för en flerfaslast som mäts med en enda mätare, till exempel ett CEE-uttag eller en laddbox som mäts som totalt. Välj de andra faserna den är kopplad till: den ritas då som flerfaslast och kontrolleras inte för flyttar.",
+            "draw": "Med mer än en fas: all mätarens effekt på fasen ovan (en enfasbil i en trefasladdbox), eller jämnt fördelad över de anslutna faserna."
           }
         },
         "phase_manual": {
@@ -131,10 +141,14 @@
           "description": "Historiken kunde inte avgöra vilken fas {name} sitter på ({steps} användbara till/från-steg de senaste 10 dagarna). Välj fas själv, eller kom tillbaka när den har slagits på och av några gånger.",
           "data": {
             "phase": "Fas",
-            "portable": "Flyttbar: följ med när den flyttas till en annan fas"
+            "portable": "Flyttbar: följ med när den flyttas till en annan fas",
+            "connected_phases": "Också ansluten till",
+            "draw": "Effekten räknas"
           },
           "data_description": {
-            "portable": "För något som flyttas mellan uttag (ett element, en vattenkokare). HA Phase Map följer när den slås på och av; visar det tydligt en annan fas flyttas lasten dit automatiskt. Annars frågar den under Inställningar → Reparationer."
+            "portable": "För något som flyttas mellan uttag (ett element, en vattenkokare). HA Phase Map följer när den slås på och av; visar det tydligt en annan fas flyttas lasten dit automatiskt. Annars frågar den under Inställningar → Reparationer.",
+            "connected_phases": "Bara för en flerfaslast som mäts med en enda mätare, till exempel ett CEE-uttag eller en laddbox som mäts som totalt. Välj de andra faserna den är kopplad till: den ritas då som flerfaslast och kontrolleras inte för flyttar.",
+            "draw": "Med mer än en fas: all mätarens effekt på fasen ovan (en enfasbil i en trefasladdbox), eller jämnt fördelad över de anslutna faserna."
           }
         },
         "multi": {
@@ -171,6 +185,24 @@
           "description": "Sitter {name} efter en annan mätare du har lagt till, till exempel mätaren på garagets inkommande kabel? Då dras den från den mätaren i stället för från huvudsäkringen, och mätaren visar det som blir kvar. Förvalt från energipanelens överordnade enhet när den har en.",
           "data": {
             "parent": "Överordnad mätare"
+          }
+        },
+        "reconfigure_meter": {
+          "title": "Redigera last",
+          "description": "En mätare. För att göra den till en flerfaslast (till exempel en trefasladdbox som i dag bara laddar på en fas), välj de andra faserna under Också ansluten till.",
+          "data": {
+            "name": "Namn",
+            "entity": "Mätare",
+            "phase": "Fas",
+            "connected_phases": "Också ansluten till",
+            "draw": "Effekten räknas",
+            "portable": "Flyttbar: följ med när den flyttas till en annan fas",
+            "parent": "Överordnad mätare"
+          },
+          "data_description": {
+            "connected_phases": "Bara för en flerfaslast som mäts med en enda mätare, till exempel ett CEE-uttag eller en laddbox som mäts som totalt. Välj de andra faserna den är kopplad till: den ritas då som flerfaslast och kontrolleras inte för flyttar.",
+            "draw": "Med mer än en fas: all mätarens effekt på fasen ovan (en enfasbil i en trefasladdbox), eller jämnt fördelad över de anslutna faserna.",
+            "portable": "För något som flyttas mellan uttag (ett element, en vattenkokare). HA Phase Map följer när den slås på och av; visar det tydligt en annan fas flyttas lasten dit automatiskt. Annars frågar den under Inställningar → Reparationer."
           }
         }
       },

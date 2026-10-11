@@ -26,8 +26,10 @@ from homeassistant.helpers.storage import Store
 
 from .const import (
     CONF_CHANNELS,
+    CONF_CONNECTED,
     CONF_LABEL_NAME,
     CONF_LABELS,
+    CONF_METER,
     CONF_PHASES,
     DEFAULT_LABEL_NAME,
     DOMAIN,
@@ -67,7 +69,10 @@ def desired_labels(hass: HomeAssistant, entry: ConfigEntry) -> dict[str, set[str
     for sub in entry.subentries.values():
         if sub.subentry_type != SUBENTRY_LOAD:
             continue
-        for phase, entity_id in (sub.data.get(CONF_CHANNELS) or {}).items():
+        pairs = list((sub.data.get(CONF_CHANNELS) or {}).items())
+        if sub.data.get(CONF_METER):
+            pairs += [(p, sub.data[CONF_METER]) for p in sub.data.get(CONF_CONNECTED) or []]
+        for phase, entity_id in pairs:
             reg = entities.async_get(entity_id) if entity_id else None
             if reg is None or reg.device_id is None or phase not in names:
                 continue

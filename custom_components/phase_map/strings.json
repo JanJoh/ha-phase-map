@@ -88,6 +88,12 @@
         "2": "2 phases (split-phase)",
         "3": "3 phases"
       }
+    },
+    "draw": {
+      "options": {
+        "phase": "All on the phase above",
+        "equal": "Split equally over the connected phases"
+      }
     }
   },
   "config_subentries": {
@@ -120,10 +126,14 @@
           "description": "{name} is probably on **{phase}** ({confidence} confidence: {steps} on/off steps, gain {gain}). Change it if you know better.",
           "data": {
             "phase": "Phase",
-            "portable": "Portable: follow it when it moves to another phase"
+            "portable": "Portable: follow it when it moves to another phase",
+            "connected_phases": "Also connected to",
+            "draw": "Power is counted"
           },
           "data_description": {
-            "portable": "For something that is moved between sockets (a space heater, a kettle). HA Phase Map watches its switch-on and switch-off events; when they clearly show another phase, it moves the load there by itself. Otherwise it asks under Settings → Repairs."
+            "portable": "For something that is moved between sockets (a space heater, a kettle). HA Phase Map watches its switch-on and switch-off events; when they clearly show another phase, it moves the load there by itself. Otherwise it asks under Settings → Repairs.",
+            "connected_phases": "Only for a multi-phase load measured by one meter, such as a CEE outlet or a charger measured as a total. Pick the other phases it is wired to: it is then drawn as a multi-phase load and not checked for moves.",
+            "draw": "With more than one phase: all of the meter's power on the phase above (a 1-phase car on a 3-phase charger), or split equally over the connected phases."
           }
         },
         "phase_manual": {
@@ -131,10 +141,14 @@
           "description": "History could not tell which phase {name} is on ({steps} usable on/off steps in the last 10 days). Pick the phase, or come back after it has been switched on and off a few times.",
           "data": {
             "phase": "Phase",
-            "portable": "Portable: follow it when it moves to another phase"
+            "portable": "Portable: follow it when it moves to another phase",
+            "connected_phases": "Also connected to",
+            "draw": "Power is counted"
           },
           "data_description": {
-            "portable": "For something that is moved between sockets (a space heater, a kettle). HA Phase Map watches its switch-on and switch-off events; when they clearly show another phase, it moves the load there by itself. Otherwise it asks under Settings → Repairs."
+            "portable": "For something that is moved between sockets (a space heater, a kettle). HA Phase Map watches its switch-on and switch-off events; when they clearly show another phase, it moves the load there by itself. Otherwise it asks under Settings → Repairs.",
+            "connected_phases": "Only for a multi-phase load measured by one meter, such as a CEE outlet or a charger measured as a total. Pick the other phases it is wired to: it is then drawn as a multi-phase load and not checked for moves.",
+            "draw": "With more than one phase: all of the meter's power on the phase above (a 1-phase car on a 3-phase charger), or split equally over the connected phases."
           }
         },
         "multi": {
@@ -171,6 +185,24 @@
           "description": "Is {name} downstream of another meter you have added, for example the meter on the garage's incoming cable? Then it is subtracted from that meter instead of the main fuse, and that meter shows what is left. Pre-selected from the Energy dashboard's upstream device when it has one.",
           "data": {
             "parent": "Upstream meter"
+          }
+        },
+        "reconfigure_meter": {
+          "title": "Edit load",
+          "description": "One meter. To make it a multi-phase load (for example a 3-phase charger that today only charges on one phase), pick the other phases under Also connected to.",
+          "data": {
+            "name": "Name",
+            "entity": "Meter",
+            "phase": "Phase",
+            "connected_phases": "Also connected to",
+            "draw": "Power is counted",
+            "portable": "Portable: follow it when it moves to another phase",
+            "parent": "Upstream meter"
+          },
+          "data_description": {
+            "connected_phases": "Only for a multi-phase load measured by one meter, such as a CEE outlet or a charger measured as a total. Pick the other phases it is wired to: it is then drawn as a multi-phase load and not checked for moves.",
+            "draw": "With more than one phase: all of the meter's power on the phase above (a 1-phase car on a 3-phase charger), or split equally over the connected phases.",
+            "portable": "For something that is moved between sockets (a space heater, a kettle). HA Phase Map watches its switch-on and switch-off events; when they clearly show another phase, it moves the load there by itself. Otherwise it asks under Settings → Repairs."
           }
         }
       },

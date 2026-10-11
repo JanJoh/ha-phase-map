@@ -6,7 +6,9 @@ websocket API, and the card in [ha-phase-map-card](https://github.com/JanJoh/ha-
 **0.2.0** (2026-10-11): nested meters (`parent`, section 3a). **0.3.0** (2026-10-11): live
 phase check with repairs and portable loads (section 5a), sub-panels in the card. Not yet:
 new-meter discovery (section 6), guided test mode. **0.4.0** (2026-10-11): phase labels on
-devices (`labels.py`).
+devices (`labels.py`). **0.5.0**: one-meter multi-phase loads (`meter`, `connected_phases`,
+`draw`: equal or the phase it draws from), declared rather than inferred, excluded from the
+phase check.
 Written from a working prototype on one installation (3 × 230 V, 3 × 20 A, ~20 sub-meters).
 
 ## 1. Problem

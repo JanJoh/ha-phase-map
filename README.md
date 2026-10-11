@@ -95,6 +95,9 @@ Then, on the HA Phase Map entry, add:
   confidence: 47 on/off steps, gain 1.03)"*. Change it if you know better.
 - **Load → A multi-phase load**: one meter channel per phase, for example an EV charger or a
   stove measured by a Shelly Pro 3EM.
+- **Load → One meter on one phase** also covers a **multi-phase load with only one meter**
+  (a CEE outlet, a charger measured as a total): in the phase step, pick **Also connected to**
+  for the other phases it is wired to, and how its power is counted (see below).
 - **Load → A load without a meter (estimated)**: name, phases and estimated power. It is drawn
   dashed on the card.
 - **Measured by** (asked after the details when you have other meters): if the load sits
@@ -124,6 +127,21 @@ filter by phase anywhere labels are shown: device lists, entity tables, the auto
 - Turning the option off asks whether to **remove** the labels it added or **keep** them (then
   HA Phase Map stops managing them). Removing the integration leaves the labels in place, so
   turn the option off first if you want them gone.
+
+### Multi-phase loads with one meter
+
+Phase suggestions and the phase check go by what the meter shows. A 3-phase charger with a car
+that only charges on one phase looks like a single-phase load on that phase. If the load is
+wired to more phases, say so: in the phase step (or when editing the load) pick **Also
+connected to** for the other phases. HA Phase Map then:
+
+- draws it as a multi-phase load, whatever the history shows;
+- counts its power by **Power is counted**: **all on the phase above** (the 1-phase car on L1)
+  or **split equally** over the connected phases (a 3-phase car, a 3-phase heater);
+- leaves it out of the phase check, since its phases are your declaration.
+
+When the car changes, edit the load and switch between the two. A load with one meter per
+phase (**A multi-phase load**) never needs this: its per-phase values are measured.
 
 ### Meters behind other meters
 

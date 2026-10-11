@@ -20,13 +20,16 @@ import voluptuous as vol
 
 from .const import (
     CONF_CHANNELS,
+    CONF_CONNECTED,
     CONF_DETECT_PHASES,
+    CONF_DRAW,
     CONF_ESTIMATED_PHASES,
     CONF_ESTIMATED_W,
     CONF_FUSE_A,
     CONF_LABEL_NAME,
     CONF_LABELS,
     CONF_MARGIN_A,
+    CONF_METER,
     CONF_MIN_CURRENT_A,
     CONF_NAME,
     CONF_OFF_DELAY,
@@ -47,6 +50,7 @@ from .const import (
     DEFAULT_OVERLOAD_DELAY,
     DEFAULT_VOLTAGE,
     DOMAIN,
+    DRAW_EQUAL,
     NO_PARENT,
     PHASE_NAMES,
     SUBENTRY_DETECTOR,
@@ -59,6 +63,7 @@ from .hierarchy import descendants
 from .labels import async_forget_labels, async_label_counts, async_remove_labels
 
 SECTION_LABELS = "phase_labels"
+DRAW_PHASE = "phase"               # form value: all on the phase picked above
 SUPPORTED_UNITS = {"A", "mA", "W", "kW"}
 NO_PARENT_TEXT = {"en": "None: directly on the main fuse", "sv": "Ingen: direkt på huvudsäkringen"}
 CONFIDENCE_TEXT = {"en": {"high": "high", "medium": "medium"}, "sv": {"high": "hög", "medium": "medel"}}
@@ -294,7 +299,7 @@ class LoadSubentryFlow(ConfigSubentryFlow):
             blocked = {exclude} | descendants(
                 [_SubLoad(s) for s in subs], exclude
             )
-        return [s for s in subs if s.data.get(CONF_CHANNELS) and s.subentry_id not in blocked]
+        return [s for s in subs if (s.data.get(CONF_CHANNELS) or s.data.get(CONF_METER)) and s.subentry_id not in blocked]
 
     def _parent_selector(self, candidates: list[ConfigSubentry]) -> selector.SelectSelector:
         lang = "sv" if (self.hass.config.language or "").startswith("sv") else "en"
@@ -308,8 +313,14 @@ class LoadSubentryFlow(ConfigSubentryFlow):
         sub = self._get_entry().subentries.get(parent or "")
         return dict(sub.data.get(CONF_CHANNELS, {})) if sub else {}
 
+    def _parent_phases(self, parent: str | None) -> list[str]:
+        sub = self._get_entry().subentries.get(parent or "")
+        if sub is None:
+            return []
+        return list(sub.data.get(CONF_CHANNELS) or {}) or list(sub.data.get(CONF_CONNECTED) or [])
+
     def _outside_parent(self, phases: list[str], parent: str | None) -> bool:
-        return bool(parent) and not set(phases) <= set(self._parent_channels(parent))
+        return bool(parent) and not set(phases) <= set(self._parent_phases(parent))
 
     async def _energy_parent(self, meters: list[str], candidates: list[ConfigSubentry]) -> str | None:
         if not meters or not candidates:
@@ -319,7 +330,8 @@ class LoadSubentryFlow(ConfigSubentryFlow):
             self.hass,
             devices,
             meters,
-            {s.subentry_id: list(s.data.get(CONF_CHANNELS, {}).values()) for s in candidates},
+            {s.subentry_id: [*s.data.get(CONF_CHANNELS, {}).values(), *([s.data[CONF_METER]] if s.data.get(CONF_METER) else [])]
+             for s in candidates},
             self._get_entry().data[CONF_SOURCES].values(),
         )
 
@@ -394,21 +406,26 @@ class LoadSubentryFlow(ConfigSubentryFlow):
         """Pick the phase; pre-selected from history when the analysis was clear."""
         name = self._data[CONF_NAME]
         meter = next(iter(self._data[CONF_CHANNELS].values()))
-        options = list(self._parent_channels(self._parent)) or self._phases
+        options = self._parent_phases(self._parent) or self._phases
         if user_input is not None:
-            data = {CONF_NAME: name, CONF_CHANNELS: {user_input["phase"]: meter}}
-            if user_input.get(CONF_PORTABLE):
-                data[CONF_PORTABLE] = True
-            return self._create(data)
+            if self._outside_parent(_connected(user_input, self._phases), self._parent):
+                errors = {CONF_CONNECTED: "outside_parent"}
+            else:
+                return self._create(_one_meter_data(name, meter, user_input, self._phases))
+        else:
+            errors = {}
         sug = self._suggestion
         found = bool(sug and sug.phase and sug.phase in options)
         default = sug.phase if found else options[0]
         schema = vol.Schema(
             {
                 vol.Required("phase", default=default): _phase_select(options, multiple=False),
+                **_multi_fields(options, DRAW_PHASE if found else DRAW_EQUAL),
                 vol.Optional(CONF_PORTABLE, default=False): selector.BooleanSelector(),
             }
         )
+        if user_input is not None:
+            schema = self.add_suggested_values_to_schema(schema, user_input)
         if found:
             score = sug.scores[sug.phase]
             lang = "sv" if (self.hass.config.language or "").startswith("sv") else "en"
@@ -419,11 +436,13 @@ class LoadSubentryFlow(ConfigSubentryFlow):
                 "steps": str(sug.steps),
                 "gain": f"{score.gain:.2f}" if score.gain is not None else "–",
             }
-            return self.async_show_form(step_id="phase", data_schema=schema, description_placeholders=placeholders)
+            return self.async_show_form(step_id="phase", data_schema=schema, description_placeholders=placeholders,
+                                        errors=errors)
         return self.async_show_form(
             step_id="phase_manual",
             data_schema=schema,
             description_placeholders={"name": name, "steps": str(sug.steps if sug else 0)},
+            errors=errors,
         )
 
     async def async_step_phase_manual(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
@@ -471,6 +490,8 @@ class LoadSubentryFlow(ConfigSubentryFlow):
 
     async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
         subentry = self._get_reconfigure_subentry()
+        if subentry.data.get(CONF_METER) or len(subentry.data.get(CONF_CHANNELS) or {}) == 1:
+            return await self.async_step_reconfigure_meter(user_input)
         estimated = not subentry.data.get(CONF_CHANNELS)
         candidates = self._parent_candidates(exclude=subentry.subentry_id)
         parent_field = {vol.Optional(CONF_PARENT): self._parent_selector(candidates)} if candidates else {}
@@ -530,6 +551,83 @@ class LoadSubentryFlow(ConfigSubentryFlow):
             data_schema=self.add_suggested_values_to_schema(schema, user_input or current),
             errors=errors,
         )
+
+
+    async def async_step_reconfigure_meter(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
+        """A load with one meter: its phase, other phases it is wired to, and how power is split."""
+        subentry = self._get_reconfigure_subentry()
+        data_in = subentry.data
+        candidates = self._parent_candidates(exclude=subentry.subentry_id)
+        if data_in.get(CONF_METER):
+            meter = data_in[CONF_METER]
+            connected = list(data_in.get(CONF_CONNECTED) or [])
+            draw = data_in.get(CONF_DRAW) or DRAW_EQUAL
+            phase = draw if draw in connected else (connected[0] if connected else self._phases[0])
+            current = {"phase": phase, CONF_CONNECTED: [p for p in connected if p != phase],
+                       CONF_DRAW: DRAW_EQUAL if draw == DRAW_EQUAL else DRAW_PHASE}
+        else:
+            (phase, meter), = data_in[CONF_CHANNELS].items()
+            current = {"phase": phase, CONF_CONNECTED: [], CONF_DRAW: DRAW_PHASE,
+                       CONF_PORTABLE: bool(data_in.get(CONF_PORTABLE))}
+        current.update({CONF_NAME: data_in.get(CONF_NAME, subentry.title), "entity": meter,
+                        CONF_PARENT: data_in.get(CONF_PARENT) or NO_PARENT})
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_NAME): selector.TextSelector(),
+                vol.Required("entity"): METER_SELECTOR,
+                vol.Required("phase"): _phase_select(self._phases, multiple=False),
+                **_multi_fields(self._phases, None),
+                vol.Optional(CONF_PORTABLE): selector.BooleanSelector(),
+                **({vol.Optional(CONF_PARENT): self._parent_selector(candidates)} if candidates else {}),
+            }
+        )
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            if not _unit_ok(self.hass, user_input["entity"]):
+                errors["entity"] = "unsupported_unit"
+            parent = user_input.get(CONF_PARENT)
+            parent = None if parent in (None, NO_PARENT) else parent
+            if parent and self._outside_parent(_connected(user_input, self._phases), parent):
+                errors[CONF_PARENT] = "outside_parent"
+            if not errors:
+                data = _one_meter_data(user_input[CONF_NAME], user_input["entity"], user_input, self._phases)
+                if parent:
+                    data[CONF_PARENT] = parent
+                return self.async_update_and_abort(self._get_entry(), subentry, title=data[CONF_NAME], data=data)
+        return self.async_show_form(
+            step_id="reconfigure_meter",
+            data_schema=self.add_suggested_values_to_schema(schema, user_input or current),
+            errors=errors,
+        )
+
+
+def _multi_fields(phases: list[str], draw_default: str | None) -> dict:
+    """'Also connected to' and 'Power is drawn' for a load with one meter."""
+    draw_key = vol.Optional(CONF_DRAW, default=draw_default) if draw_default else vol.Optional(CONF_DRAW)
+    return {
+        vol.Optional(CONF_CONNECTED, default=[]): _phase_select(phases, multiple=True),
+        draw_key: selector.SelectSelector(
+            selector.SelectSelectorConfig(options=[DRAW_PHASE, DRAW_EQUAL], translation_key="draw",
+                                          mode=selector.SelectSelectorMode.LIST)
+        ),
+    }
+
+
+def _connected(user_input: dict[str, Any], phases: list[str]) -> list[str]:
+    chosen = {user_input["phase"], *(user_input.get(CONF_CONNECTED) or [])}
+    return [p for p in phases if p in chosen]
+
+
+def _one_meter_data(name: str, meter: str, user_input: dict[str, Any], phases: list[str]) -> dict[str, Any]:
+    """Single-phase (channels) or forced multi-phase with one meter (meter/connected/draw)."""
+    connected = _connected(user_input, phases)
+    if len(connected) == 1:
+        data: dict[str, Any] = {CONF_NAME: name, CONF_CHANNELS: {user_input["phase"]: meter}}
+        if user_input.get(CONF_PORTABLE):
+            data[CONF_PORTABLE] = True
+        return data
+    draw = user_input["phase"] if user_input.get(CONF_DRAW, DRAW_EQUAL) == DRAW_PHASE else DRAW_EQUAL
+    return {CONF_NAME: name, CONF_CHANNELS: {}, CONF_METER: meter, CONF_CONNECTED: connected, CONF_DRAW: draw}
 
 
 class _SubLoad:

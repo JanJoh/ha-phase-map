@@ -84,9 +84,12 @@ async def test_reconfigure_load(hass: HomeAssistant, main_fuse_states) -> None:
     result = await hass.config_entries.subentries.async_init(
         (entry.entry_id, "load"), context={"source": SOURCE_RECONFIGURE, "subentry_id": "sub_oven"}
     )
-    result = await hass.config_entries.subentries.async_configure(result["flow_id"], {"name": "Oven", "L1": "sensor.oven"})
+    assert result["step_id"] == "reconfigure_meter"
+    result = await hass.config_entries.subentries.async_configure(
+        result["flow_id"], {"name": "Oven", "entity": "sensor.oven", "phase": "L1"}
+    )
     assert result["type"] is FlowResultType.ABORT and result["reason"] == "reconfigure_successful"
-    assert entry.subentries["sub_oven"].data["channels"] == {"L1": "sensor.oven"}
+    assert entry.subentries["sub_oven"].data == {"name": "Oven", "channels": {"L1": "sensor.oven"}}
 
 
 async def test_detector_flow(hass: HomeAssistant, main_fuse_states) -> None:

@@ -26,10 +26,13 @@ from .const import (
     BASELINE_SAMPLE_S,
     BASELINE_WINDOW,
     CONF_CHANNELS,
+    CONF_CONNECTED,
+    CONF_DRAW,
     CONF_ESTIMATED_PHASES,
     CONF_ESTIMATED_W,
     CONF_FUSE_A,
     CONF_MARGIN_A,
+    CONF_METER,
     CONF_NAME,
     CONF_PARENT,
     CONF_PHASES,
@@ -38,6 +41,7 @@ from .const import (
     CONF_VOLTAGE,
     DEFAULT_MARGIN_A,
     DOMAIN,
+    DRAW_EQUAL,
     SIGNAL_UPDATE,
     SUBENTRY_DETECTOR,
     SUBENTRY_LOAD,
@@ -80,13 +84,41 @@ class LoadModel:
     parent: str | None = None                # subentry id of the meter this load sits behind
     portable: bool = False                   # follow it to a new phase without asking
 
+    meter: str | None = None                 # one meter for several connected phases
+    connected: list[str] = field(default_factory=list)
+    draw: str | None = None                  # DRAW_EQUAL, or the one phase it draws from
+
     @property
     def phases(self) -> list[str]:
-        return list(self.channels) or list(self.estimated_phases)
+        return list(self.channels) or list(self.connected) or list(self.estimated_phases)
 
     @property
     def estimated(self) -> bool:
-        return not self.channels
+        return not self.channels and not self.meter
+
+    @property
+    def entities(self) -> list[str]:
+        return [*self.channels.values(), *([self.meter] if self.meter else [])]
+
+
+def amps_for(load: LoadModel, get) -> dict[str, float | None]:
+    """A load's current per phase, given `get(entity_id) -> amps | None`.
+
+    A load with one meter for several phases splits the total as configured: equally over
+    the connected phases, or all of it on the phase it draws from (a 1-phase car on a
+    3-phase charger).
+    """
+    if load.channels:
+        return {p: get(e) for p, e in load.channels.items()}
+    if not load.meter:
+        return {}
+    total = get(load.meter)
+    if total is None:
+        return {p: None for p in load.connected}
+    if load.draw in load.connected:
+        return {p: (total if p == load.draw else 0.0) for p in load.connected}
+    share = total / len(load.connected) if load.connected else 0.0
+    return {p: share for p in load.connected}
 
 
 class PhaseMapEngine:
@@ -109,6 +141,9 @@ class PhaseMapEngine:
                 estimated_w=sub.data.get(CONF_ESTIMATED_W),
                 estimated_phases=[p for p in sub.data.get(CONF_ESTIMATED_PHASES, []) if p in self.phases],
                 parent=sub.data.get(CONF_PARENT) or None,
+                meter=sub.data.get(CONF_METER) or None,
+                connected=[p for p in self.phases if p in (sub.data.get(CONF_CONNECTED) or [])],
+                draw=sub.data.get(CONF_DRAW) or DRAW_EQUAL,
                 portable=bool(sub.data.get(CONF_PORTABLE)),
             )
             for sub in entry.subentries.values()
@@ -136,19 +171,22 @@ class PhaseMapEngine:
             if len(load.channels) != 1:
                 continue
             parent = self.parents.get(load.subentry_id)
-            reference = dict(by_id[parent].channels) if parent else dict(self.sources)
+            # A parent with one meter for several phases cannot tell phases apart: compare
+            # with the main fuse instead, but only allow the parent's phases.
+            reference = dict(by_id[parent].channels) if parent and by_id[parent].channels else dict(self.sources)
+            allowed = by_id[parent].phases if parent else list(self.sources)
             (phase, entity), = load.channels.items()
-            checks.append(LoadCheck(load.subentry_id, phase, list(reference), reference, entity))
+            checks.append(LoadCheck(load.subentry_id, phase, allowed, reference, entity))
             # Meters that move with this load are not confounders: its ancestors, its
             # descendants and the main fuse.
             skip = set(self.sources.values())
             up = parent
             while up:
-                skip.update(by_id[up].channels.values())
+                skip.update(by_id[up].entities)
                 up = self.parents.get(up)
             for child in descendants(self.loads, load.subentry_id):
                 if child in by_id:
-                    skip.update(by_id[child].channels.values())
+                    skip.update(by_id[child].entities)
             ignore[load.subentry_id] = skip
         checker = PhaseChecker(checks, self._on_phase_verdict, clock=lambda: dt_util.utcnow().timestamp())
         checker.ignore_for = ignore
@@ -207,7 +245,7 @@ class PhaseMapEngine:
     def tracked_entities(self) -> list[str]:
         ids = set(self.sources.values())
         for load in self.loads:
-            ids.update(load.channels.values())
+            ids.update(load.entities)
         return sorted(ids)
 
     async def async_start(self) -> None:
@@ -264,7 +302,7 @@ class PhaseMapEngine:
                 self.baseline[p] = ordered[int(BASELINE_QUANTILE * (len(ordered) - 1))]
 
     def load_amps(self, load: LoadModel) -> dict[str, float | None]:
-        return {p: to_amps(self.hass.states.get(e), self.voltage) for p, e in load.channels.items()}
+        return amps_for(load, lambda e: to_amps(self.hass.states.get(e), self.voltage))
 
     @callback
     def recompute(self) -> None:
@@ -284,6 +322,8 @@ class PhaseMapEngine:
                 "a": {p: (round(a, 3) if a is not None else None) for p, a in own.items()},
                 "w": {p: (round(max(a, 0.0) * self.voltage) if a is not None else None) for p, a in own.items()},
             }
+            if load.meter:
+                row["meter"] = {"draw": load.draw if load.draw in load.connected else DRAW_EQUAL}
             if (check := self.checker.checks.get(load.subentry_id)) is not None:
                 row["phase_check"] = check.as_dict()
             if load.subentry_id in rest:

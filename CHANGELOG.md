@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.0 (unreleased)
+
+- **Multi-phase loads with one meter.** A load measured by a single total meter (a CEE outlet,
+  a charger measured as a total) can be declared multi-phase whatever its history shows: pick
+  its phase and **Also connected to** the other phases it is wired to. It is drawn as a
+  multi-phase load and is not checked for moves.
+- **Power is counted** decides how that meter's power is split: all on the phase picked (a
+  1-phase car on a 3-phase charger), or equally over the connected phases. Editing the load can
+  change both, and turn it back into a single-phase load.
+- Editing a load with one meter now shows its meter, phase and these options instead of one
+  field per phase. Such a load can also be a parent; meters behind it are then checked against
+  the main fuse, limited to its phases.
+
 ## 0.4.0 (unreleased)
 
 - **Phase labels on devices** (options → *Phase labels on devices*, off by default): every
