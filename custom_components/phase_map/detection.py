@@ -90,10 +90,10 @@ def analyse(meter: dict[float, float], phases: dict[str, dict[float, float]], st
     return Suggestion(best_phase, "high" if high else "medium", len(idx), scores, reason="ok")
 
 
-def _series(rows: list[dict[str, Any]], factor: float) -> dict[float, float]:
+def _series(rows: list[dict[str, Any]], factor: float, key: str = "mean") -> dict[float, float]:
     out = {}
     for row in rows:
-        mean = row.get("mean")
+        mean = row.get(key)
         if mean is None:
             continue
         start = row["start"]
@@ -108,9 +108,10 @@ def unit_factor(unit: str | None, voltage: float) -> float | None:
 
 
 async def async_fetch_means(
-    hass: HomeAssistant, entity_units: dict[str, str | None], voltage: float, days: float, period: str
+    hass: HomeAssistant, entity_units: dict[str, str | None], voltage: float, days: float, period: str,
+    key: str = "mean",
 ) -> dict[str, dict[float, float]]:
-    """Mean statistics in amps for several entities over the last `days`."""
+    """Mean (or max) statistics in amps for several entities over the last `days`."""
     from homeassistant.components.recorder import get_instance
     from homeassistant.components.recorder.statistics import statistics_during_period
 
@@ -118,12 +119,12 @@ async def async_fetch_means(
     start = end - timedelta(days=days)
     ids = set(entity_units)
     rows = await get_instance(hass).async_add_executor_job(
-        statistics_during_period, hass, start, end, ids, period, None, {"mean"}
+        statistics_during_period, hass, start, end, ids, period, None, {key}
     )
     out = {}
     for entity_id, unit in entity_units.items():
         factor = unit_factor(unit, voltage)
-        out[entity_id] = _series(rows.get(entity_id, []), factor) if factor else {}
+        out[entity_id] = _series(rows.get(entity_id, []), factor, key) if factor else {}
     return out
 
 

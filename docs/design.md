@@ -8,7 +8,10 @@ phase check with repairs and portable loads (section 5a), sub-panels in the card
 new-meter discovery (section 6), guided test mode. **0.4.0** (2026-10-11): phase labels on
 devices (`labels.py`). **0.5.0**: one-meter multi-phase loads (`meter`, `connected_phases`,
 `draw`: equal or the phase it draws from), declared rather than inferred, excluded from the
-phase check.
+phase check. **0.6.0**: `verified` phases per multi-phase load (per-phase meter ≥ 0.1 A
+live or in 30 days of hourly max statistics; one-meter loads from main-fuse response, 2 live
+events with ≥ 20 % of the step, or `analyse()` gain ≥ 0.2 and t ≥ 3 over 10 days); the card
+dashes unverified conductors.
 Written from a working prototype on one installation (3 × 230 V, 3 × 20 A, ~20 sub-meters).
 
 ## 1. Problem

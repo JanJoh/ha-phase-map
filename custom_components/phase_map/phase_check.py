@@ -120,6 +120,9 @@ class PhaseChecker:
         self._clock = clock
         self.ignore_for: dict[str, set[str]] = {}   # load id -> entities that are not confounders
 
+    def now(self) -> float:
+        return self._clock()
+
     def record(self, entity_id: str, amps: float | None, t: float | None = None) -> None:
         self._series.setdefault(entity_id, _Series()).add(self._clock() if t is None else t, amps)
 
@@ -130,27 +133,40 @@ class PhaseChecker:
             return None
         return self._clock() if t is None else t
 
-    def evaluate(self, entity_id: str, t_step: float, step_a: float, now: datetime) -> str | None:
-        """Called POST_S after a step: record the vote, report a verdict change."""
-        check = self._by_entity.get(entity_id)
-        if check is None:
-            return None
+    def response(self, t_step: float, step_a: float, reference: dict[str, str],
+                 skip: set[str]) -> dict[str, float] | None:
+        """How much each reference phase moved around a step; None if spoiled or unknown.
+
+        Any tracked meter outside `skip` and the reference that moved by more than
+        CONFOUND_RATIO of the step in the same window spoils the event.
+        """
         before_t, after_t = t_step - PRE_S, t_step + POST_S
-        skip = {entity_id, *check.reference.values(), *self.ignore_for.get(check.load_id, set())}
+        skip = skip | set(reference.values())
         for other, series in self._series.items():
             if other in skip:
                 continue
             a, b = series.value_at(before_t), series.value_at(after_t)
             if a is not None and b is not None and abs(b - a) > CONFOUND_RATIO * abs(step_a):
                 return None
-        response: dict[str, float] = {}
-        for phase, ref in check.reference.items():
+        out: dict[str, float] = {}
+        for phase, ref in reference.items():
             series = self._series.get(ref)
             a = series.value_at(before_t) if series else None
             b = series.value_at(after_t) if series else None
             if a is None or b is None:
                 return None
-            response[phase] = abs(b) - abs(a)
+            out[phase] = abs(b) - abs(a)
+        return out
+
+    def evaluate(self, entity_id: str, t_step: float, step_a: float, now: datetime) -> str | None:
+        """Called POST_S after a step: record the vote, report a verdict change."""
+        check = self._by_entity.get(entity_id)
+        if check is None:
+            return None
+        skip = {entity_id, *self.ignore_for.get(check.load_id, set())}
+        response = self.response(t_step, step_a, check.reference, skip)
+        if response is None:
+            return None
         vote = classify(step_a, response)
         if vote is None:
             return None

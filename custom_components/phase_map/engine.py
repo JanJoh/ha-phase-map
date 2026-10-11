@@ -46,10 +46,17 @@ from .const import (
     SUBENTRY_DETECTOR,
     SUBENTRY_LOAD,
 )
+from .detection import analyse, async_fetch_means
 from .hierarchy import descendants, effective_parents, split
-from .phase_check import POST_S, LoadCheck, PhaseChecker
+from .phase_check import LIVE_MIN_STEP_A, POST_S, LoadCheck, PhaseChecker
 
 _LOGGER = logging.getLogger(__name__)
+
+# A phase of a multi-phase load counts as verified once it has been seen carrying the load:
+VERIFY_A = 0.1            # a per-phase meter showed at least this much current (≈ 23 W; above meter noise)
+VERIFY_SHARE = 0.2        # one meter for several phases: the phase moved by this share of a step
+VERIFY_EVENTS = 2         # ... in this many live events
+VERIFY_HISTORY_DAYS = 30
 
 
 def to_amps(state: State | None, voltage: float) -> float | None:
@@ -159,6 +166,12 @@ class PhaseMapEngine:
         self.device_id: str | None = None   # the fuse device, set at setup
         self.checker = self._build_checker()
         self._pending: set = set()          # phase-check evaluations waiting for POST_S
+        # Multi-phase loads: the phases seen carrying them (others are drawn dashed)
+        self.verified: dict[str, set[str]] = {
+            load.subentry_id: set() for load in self.loads if len(load.phases) > 1 and not load.estimated
+        }
+        self._verify_hits: dict[str, dict[str, int]] = {lid: {} for lid in self.verified}
+        self._seed_task = None
 
     # --- phase check ---------------------------------------------------------------
 
@@ -241,6 +254,85 @@ class PhaseMapEngine:
         )
         self.recompute()
 
+    # --- verified phases of multi-phase loads ---------------------------------------
+
+    def _reference_for(self, load: LoadModel) -> tuple[dict[str, str], set[str]]:
+        """Upstream meters per phase for `load`, and meters that move with it anyway."""
+        by_id = {item.subentry_id: item for item in self.loads}
+        parent = self.parents.get(load.subentry_id)
+        reference = dict(by_id[parent].channels) if parent and by_id[parent].channels else dict(self.sources)
+        skip = set(self.sources.values()) | set(load.entities)
+        up = parent
+        while up:
+            skip.update(by_id[up].entities)
+            up = self.parents.get(up)
+        for child in descendants(self.loads, load.subentry_id):
+            if child in by_id:
+                skip.update(by_id[child].entities)
+        return reference, skip
+
+    def _verify_live(self, entity_id: str, old: float | None, new: float | None) -> None:
+        for load in self.loads:
+            if load.subentry_id not in self.verified:
+                continue
+            for phase, ent in load.channels.items():
+                if ent == entity_id and new is not None and abs(new) >= VERIFY_A:
+                    self.verified[load.subentry_id].add(phase)
+            if load.meter == entity_id and old is not None and new is not None and abs(new - old) >= LIVE_MIN_STEP_A:
+                self._schedule_meter_verify(load, self.checker.now(), new - old)
+
+    def _schedule_meter_verify(self, load: LoadModel, t_step: float, step_a: float) -> None:
+        @callback
+        def _evaluate(_now) -> None:
+            self._pending.discard(cancel)
+            reference, skip = self._reference_for(load)
+            response = self.checker.response(t_step, step_a, reference, skip)
+            if response is None:
+                return
+            sign = 1 if step_a > 0 else -1
+            hits = self._verify_hits[load.subentry_id]
+            changed = False
+            for phase, moved in response.items():
+                if phase in load.phases and moved * sign / abs(step_a) >= VERIFY_SHARE:
+                    hits[phase] = hits.get(phase, 0) + 1
+                    if hits[phase] >= VERIFY_EVENTS and phase not in self.verified[load.subentry_id]:
+                        self.verified[load.subentry_id].add(phase)
+                        changed = True
+            if changed:
+                self.recompute()
+
+        cancel = async_call_later(self.hass, POST_S, _evaluate)
+        self._pending.add(cancel)
+
+    async def _async_seed_verified(self) -> None:
+        """Phases already seen carrying each multi-phase load, from recorder statistics."""
+        def unit_of(entity_id: str) -> str | None:
+            state = self.hass.states.get(entity_id)
+            return state.attributes.get("unit_of_measurement") if state else None
+
+        try:
+            channel_ids = {e for load in self.loads if load.subentry_id in self.verified for e in load.channels.values()}
+            if channel_ids:
+                peaks = await async_fetch_means(self.hass, {e: unit_of(e) for e in channel_ids}, self.voltage,
+                                                VERIFY_HISTORY_DAYS, "hour", key="max")
+                for load in self.loads:
+                    for phase, ent in load.channels.items():
+                        if load.subentry_id in self.verified and any(abs(v) >= VERIFY_A for v in peaks.get(ent, {}).values()):
+                            self.verified[load.subentry_id].add(phase)
+            for load in self.loads:
+                if load.subentry_id not in self.verified or not load.meter:
+                    continue
+                reference, _ = self._reference_for(load)
+                ids = {load.meter, *reference.values()}
+                means = await async_fetch_means(self.hass, {e: unit_of(e) for e in ids}, self.voltage, 10, "5minute")
+                result = analyse(means.get(load.meter, {}), {p: means.get(e, {}) for p, e in reference.items()})
+                for phase, score in result.scores.items():
+                    if phase in load.phases and (score.gain or 0) >= VERIFY_SHARE and score.t >= 3:
+                        self.verified[load.subentry_id].add(phase)
+        except Exception as err:  # recorder missing or not ready  # noqa: BLE001
+            _LOGGER.debug("Could not read history to verify phases: %s", err)
+        self.recompute()
+
     @property
     def tracked_entities(self) -> list[str]:
         ids = set(self.sources.values())
@@ -252,6 +344,10 @@ class PhaseMapEngine:
         for entity_id in self.tracked_entities:
             self.checker.record(entity_id, to_amps(self.hass.states.get(entity_id), self.voltage))
         self._restore_issues()
+        if self.verified:
+            self._seed_task = self.hass.async_create_background_task(
+                self._async_seed_verified(), f"phase_map verify phases {self.entry.entry_id}"
+            )
         self._unsubs.append(
             async_track_state_change_event(self.hass, self.tracked_entities, self._on_state_change)
         )
@@ -268,6 +364,8 @@ class PhaseMapEngine:
         for cancel in self._pending:
             cancel()
         self._pending.clear()
+        if self._seed_task is not None and not self._seed_task.done():
+            self._seed_task.cancel()
 
     @callback
     def _on_state_change(self, event: Event[EventStateChangedData]) -> None:
@@ -275,6 +373,8 @@ class PhaseMapEngine:
         new = to_amps(event.data["new_state"], self.voltage)
         old = to_amps(event.data["old_state"], self.voltage)
         self.checker.record(entity_id, new)
+        if self.verified:
+            self._verify_live(entity_id, old, new)
         t_step = self.checker.step(entity_id, old, new)
         if t_step is not None:
             step_a = new - old
@@ -322,6 +422,8 @@ class PhaseMapEngine:
                 "a": {p: (round(a, 3) if a is not None else None) for p, a in own.items()},
                 "w": {p: (round(max(a, 0.0) * self.voltage) if a is not None else None) for p, a in own.items()},
             }
+            if load.subentry_id in self.verified:
+                row["verified"] = [p for p in load.phases if p in self.verified[load.subentry_id]]
             if load.meter:
                 row["meter"] = {"draw": load.draw if load.draw in load.connected else DRAW_EQUAL}
             if (check := self.checker.checks.get(load.subentry_id)) is not None:

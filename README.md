@@ -140,7 +140,16 @@ connected to** for the other phases. HA Phase Map then:
   or **split equally** over the connected phases (a 3-phase car, a 3-phase heater);
 - leaves it out of the phase check, since its phases are your declaration.
 
-When the car changes, edit the load and switch between the two. A load with one meter per
+When the car changes, edit the load and switch between the two.
+
+### Verified and unverified phases
+
+For every multi-phase load, HA Phase Map notes which phases it has actually been seen drawing
+from, and the card draws the others **dashed**. With a meter per phase, a phase is verified once
+its meter has shown at least 0.1 A, live or in the last 30 days of history: a 3-phase charger
+that has only ever charged a 1-phase car is solid on L1 and dashed on L2 and L3 until a 3-phase
+car charges. With one meter for several phases, a phase is verified when the main fuse (or the
+meter above it) moves on that phase as the load switches on and off. A load with one meter per
 phase (**A multi-phase load**) never needs this: its per-phase values are measured.
 
 ### Meters behind other meters

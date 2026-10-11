@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0 (unreleased)
+
+- **Verified phases.** For every multi-phase load, the payload lists the phases it has been
+  seen drawing from (`verified`). With a meter per phase: the phase's meter showed at least
+  0.1 A, live or in the last 30 days of statistics. With one meter for several phases: the
+  main fuse (or the parent meter) moved on that phase when the load switched, in 2 live events
+  or clearly in the last 10 days of statistics. A 3-phase charger that has only ever charged a
+  1-phase car is verified on that one phase.
+
 ## 0.5.0 (unreleased)
 
 - **Multi-phase loads with one meter.** A load measured by a single total meter (a CEE outlet,
