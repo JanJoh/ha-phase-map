@@ -103,7 +103,27 @@ Then, on the HA Phase Map entry, add:
   11 A per phase), and delays. The off-delay keeps it on while a thermostat cycles.
 
 Use **⋮ → Reconfigure** to change the fuse or its sensors, and **Configure** for the overload
-warning margin and delay.
+warning margin and delay and for phase labels.
+
+### Phase labels on devices
+
+Under **Configure → Phase labels on devices**, HA Phase Map can put a label on the device of
+every load's meter that says which phase it is on, for example **Fas: 2**. You can then see and
+filter by phase anywhere labels are shown: device lists, entity tables, the automation editor.
+
+- **Label name** is free text (default *Fas*, or for example *Inkommande fas*), and each phase
+  gets its own **value** (default *1*, *2*, *3*, or for example *R*, *S*, *T*). The label reads
+  "name: value".
+- A device that measures several phases (a Shelly Pro 3EM on the garage) gets one label per
+  phase. Loads without a meter have no device and get no label.
+- Labels follow the configuration: when a load moves to another phase (also after a confirmed
+  repair or for a portable load) or you change the name or values, the old label is replaced,
+  and labels HA Phase Map created are deleted once nothing uses them.
+- Only labels HA Phase Map added itself are ever removed. A label that was already on the
+  device, even with the same name, is left alone.
+- Turning the option off asks whether to **remove** the labels it added or **keep** them (then
+  HA Phase Map stops managing them). Removing the integration leaves the labels in place, so
+  turn the option off first if you want them gone.
 
 ### Meters behind other meters
 
@@ -214,6 +234,12 @@ The card uses these commands; other frontends can too.
 | `phase_map/subscribe` `{entry_id}` | Live layout and values, pushed on every change |
 | `phase_map/average` `{entry_id, days}` | Average power per phase and per load from statistics |
 | `phase_map/suggest_phase` `{entry_id, entity_id, days}` | Which phase a meter is probably on, with scores per phase |
+
+## Known issues
+
+See [the issue tracker](https://github.com/JanJoh/ha-phase-map/issues) for known issues, and to
+report a problem or suggest something. Home Assistant links there too, from the integration's
+page (**⋮ → Known issues**).
 
 ## Development
 

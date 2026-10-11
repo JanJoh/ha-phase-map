@@ -63,10 +63,13 @@ async def test_options(hass: HomeAssistant, main_fuse_states) -> None:
     await hass.async_block_till_done()
     result = await hass.config_entries.options.async_init(entry.entry_id)
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"margin_a": 2.0, "overload_delay_s": 30}
+        result["flow_id"], {"margin_a": 2.0, "overload_delay_s": 30,
+                            "phase_labels": {"labels": False, "label_name": " Fas ", "phase_value_L1": "1",
+                                             "phase_value_L2": "2", "phase_value_L3": "3"}}
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert entry.options == {"margin_a": 2.0, "overload_delay_s": 30}
+    assert entry.options == {"margin_a": 2.0, "overload_delay_s": 30, "labels": False, "label_name": "Fas",
+                             "phase_value_L1": "1", "phase_value_L2": "2", "phase_value_L3": "3"}
 
 
 async def test_reconfigure(hass: HomeAssistant, main_fuse_states) -> None:

@@ -14,6 +14,7 @@ from homeassistant.config_entries import (
     SubentryFlowResult,
 )
 from homeassistant.core import callback
+from homeassistant.data_entry_flow import section
 from homeassistant.helpers import selector
 import voluptuous as vol
 
@@ -23,6 +24,8 @@ from .const import (
     CONF_ESTIMATED_PHASES,
     CONF_ESTIMATED_W,
     CONF_FUSE_A,
+    CONF_LABEL_NAME,
+    CONF_LABELS,
     CONF_MARGIN_A,
     CONF_MIN_CURRENT_A,
     CONF_NAME,
@@ -36,6 +39,7 @@ from .const import (
     CONF_SOURCES,
     CONF_VOLTAGE,
     DEFAULT_FUSE_A,
+    DEFAULT_LABEL_NAME,
     DEFAULT_MARGIN_A,
     DEFAULT_MIN_CURRENT_A,
     DEFAULT_OFF_DELAY,
@@ -47,11 +51,14 @@ from .const import (
     PHASE_NAMES,
     SUBENTRY_DETECTOR,
     SUBENTRY_LOAD,
+    phase_value_key,
 )
 from .detection import async_suggest_phase
 from .energy_prefs import async_energy_devices, suggest_parent
 from .hierarchy import descendants
+from .labels import async_forget_labels, async_label_counts, async_remove_labels
 
+SECTION_LABELS = "phase_labels"
 SUPPORTED_UNITS = {"A", "mA", "W", "kW"}
 NO_PARENT_TEXT = {"en": "None: directly on the main fuse", "sv": "Ingen: direkt på huvudsäkringen"}
 CONFIDENCE_TEXT = {"en": {"high": "high", "medium": "medium"}, "sv": {"high": "hög", "medium": "medel"}}
@@ -184,20 +191,76 @@ class PhaseMapConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class PhaseMapOptionsFlow(OptionsFlow):
-    """Warning margin and delay for the overload binary sensors."""
+    """Overload warning, and optional phase labels on load devices."""
+
+    def __init__(self) -> None:
+        self._pending: dict[str, Any] = {}
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        if user_input is not None:
-            return self.async_create_entry(data=user_input)
         opts = self.config_entry.options
-        schema = vol.Schema(
+        phases = self.config_entry.data[CONF_PHASES]
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            labels_in = user_input.pop(SECTION_LABELS, {})
+            data = {**user_input, CONF_LABELS: bool(labels_in.get(CONF_LABELS)),
+                    CONF_LABEL_NAME: (labels_in.get(CONF_LABEL_NAME) or DEFAULT_LABEL_NAME).strip()}
+            values = {p: str(labels_in.get(phase_value_key(p)) or "").strip() for p in phases}
+            if any(not v for v in values.values()):
+                errors["base"] = "empty_value"
+            elif len(set(values.values())) != len(values):
+                errors["base"] = "same_value_twice"
+            data.update({phase_value_key(p): v for p, v in values.items()})
+            if not errors:
+                if opts.get(CONF_LABELS) and not data[CONF_LABELS]:
+                    added, _ = await async_label_counts(self.hass, self.config_entry.entry_id)
+                    if added:
+                        self._pending = data
+                        return await self.async_step_disable_labels()
+                return self.async_create_entry(data=data)
+        current = {**opts, **(user_input or {})}
+        label_schema = vol.Schema(
             {
-                vol.Required(CONF_MARGIN_A, default=opts.get(CONF_MARGIN_A, DEFAULT_MARGIN_A)): _number(0, 50, 0.5, "A"),
-                vol.Required(CONF_OVERLOAD_DELAY, default=opts.get(CONF_OVERLOAD_DELAY, DEFAULT_OVERLOAD_DELAY)):
-                    _number(0, 3600, 5, "s"),
+                vol.Required(CONF_LABELS, default=bool(opts.get(CONF_LABELS))): selector.BooleanSelector(),
+                vol.Required(CONF_LABEL_NAME, default=opts.get(CONF_LABEL_NAME, DEFAULT_LABEL_NAME)):
+                    selector.TextSelector(),
+                **{
+                    vol.Required(phase_value_key(p), default=opts.get(phase_value_key(p), str(i + 1))):
+                        selector.TextSelector()
+                    for i, p in enumerate(phases)
+                },
             }
         )
-        return self.async_show_form(step_id="init", data_schema=schema)
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_MARGIN_A, default=current.get(CONF_MARGIN_A, DEFAULT_MARGIN_A)): _number(0, 50, 0.5, "A"),
+                vol.Required(CONF_OVERLOAD_DELAY, default=current.get(CONF_OVERLOAD_DELAY, DEFAULT_OVERLOAD_DELAY)):
+                    _number(0, 3600, 5, "s"),
+                vol.Required(SECTION_LABELS): section(label_schema, {"collapsed": not opts.get(CONF_LABELS)}),
+            }
+        )
+        return self.async_show_form(
+            step_id="init",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders={"phases": ", ".join(phases)},
+        )
+
+    async def async_step_disable_labels(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Turning labels off: remove the ones HA Phase Map added, or keep them?"""
+        added, devices = await async_label_counts(self.hass, self.config_entry.entry_id)
+        return self.async_show_menu(
+            step_id="disable_labels",
+            menu_options=["remove_labels", "keep_labels"],
+            description_placeholders={"labels": str(added), "devices": str(devices)},
+        )
+
+    async def async_step_remove_labels(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        await async_remove_labels(self.hass, self.config_entry.entry_id)
+        return self.async_create_entry(data=self._pending)
+
+    async def async_step_keep_labels(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        await async_forget_labels(self.hass, self.config_entry.entry_id)
+        return self.async_create_entry(data=self._pending)
 
 
 class LoadSubentryFlow(ConfigSubentryFlow):

@@ -5,7 +5,8 @@ phase suggestion in the load flow, per-phase sensors, overload and detector bina
 websocket API, and the card in [ha-phase-map-card](https://github.com/JanJoh/ha-phase-map-card).
 **0.2.0** (2026-10-11): nested meters (`parent`, section 3a). **0.3.0** (2026-10-11): live
 phase check with repairs and portable loads (section 5a), sub-panels in the card. Not yet:
-new-meter discovery (section 6), guided test mode, phase labels on devices (section 11).
+new-meter discovery (section 6), guided test mode. **0.4.0** (2026-10-11): phase labels on
+devices (`labels.py`).
 Written from a working prototype on one installation (3 × 230 V, 3 × 20 A, ~20 sub-meters).
 
 ## 1. Problem
@@ -222,10 +223,10 @@ Decided 2026-10-10: the card is a **separate repository** (`ha-phase-map-card`),
 is **MIT**, the name is **ha-phase-map** ("HA Phase Map", domain `phase_map`), and 0.1.0 covers
 manual assignment with suggested phases, sensors, detectors and the card.
 
-Requested 2026-10-11, not built yet: an optional **phase label** on each load's device. Toggle
-in the options (on disabling, ask whether to remove the labels it set). The label name is free
-text (default "Fas", e.g. "Inkommande fas") and the phase values are user-defined (default
-1/2/3, or R/S/T or anything); moves found by the phase check update it.
+Built in 0.4.0: optional **phase labels** on load devices, "<name>: <value>" (default "Fas",
+values 1/2/3), synced at every setup (subentry and option changes reload the entry). A store per
+entry (`phase_map.labels.<entry_id>`) records the labels it added per device and the labels it
+created, so only those are removed; turning the option off offers remove or keep.
 
 Still open:
 

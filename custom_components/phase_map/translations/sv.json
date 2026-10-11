@@ -39,16 +39,46 @@
   "options": {
     "step": {
       "init": {
-        "title": "Överlastvarning",
+        "title": "Alternativ",
+        "description": "Överlastvarning, och etiketter som visar vilken fas varje lasts enhet sitter på.",
         "data": {
-          "margin_a": "Varningsmarginal under säkringsstorleken",
+          "margin_a": "Varningsmarginal under säkringen",
           "overload_delay_s": "Fördröjning före varning"
         },
         "data_description": {
-          "margin_a": "Överlastgivaren slår till när en fas kommer så här nära säkringsstorleken.",
+          "margin_a": "Överlastgivaren slår till när en fas kommer så här nära säkringens märkström.",
           "overload_delay_s": "Hur länge fasen måste ligga så högt innan varningen slår till."
+        },
+        "sections": {
+          "phase_labels": {
+            "name": "Fasetiketter på enheter",
+            "description": "Sätter en etikett som \"Fas: 2\" på enheten för varje lasts mätare, så att du kan se och filtrera på fas överallt i Home Assistant. En enhet som mäter flera faser får en etikett per fas. Etiketterna följer med när en last flyttas.",
+            "data": {
+              "labels": "Märk enheter med sin fas",
+              "label_name": "Etikettens namn",
+              "phase_value_L1": "Värde för L1",
+              "phase_value_L2": "Värde för L2",
+              "phase_value_L3": "Värde för L3"
+            },
+            "data_description": {
+              "label_name": "Fritext, till exempel Fas eller Inkommande fas. Etiketten blir \"namn: värde\".",
+              "phase_value_L1": "Till exempel 1, R eller L1."
+            }
+          }
+        }
+      },
+      "disable_labels": {
+        "title": "Etiketter satta av HA Phase Map",
+        "description": "HA Phase Map har satt {labels} fasetiketter på {devices} enheter. Ta bort dem eller behålla dem? Etiketter du själv har satt rörs aldrig.",
+        "menu_options": {
+          "remove_labels": "Ta bort dem",
+          "keep_labels": "Behåll dem (HA Phase Map slutar hantera dem)"
         }
       }
+    },
+    "error": {
+      "empty_value": "Varje fas behöver ett etikettvärde.",
+      "same_value_twice": "Använd olika etikettvärden för faserna."
     }
   },
   "selector": {

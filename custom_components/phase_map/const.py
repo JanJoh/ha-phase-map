@@ -12,6 +12,14 @@ CONF_FUSE_A = "fuse_a"            # rated current per phase (A)
 CONF_SOURCES = "sources"          # {phase: entity_id} measuring the main fuse
 CONF_MARGIN_A = "margin_a"        # overload warning margin below the fuse (A)
 CONF_OVERLOAD_DELAY = "overload_delay_s"
+CONF_LABELS = "labels"            # label load devices with their phase
+CONF_LABEL_NAME = "label_name"    # e.g. "Fas"; the label reads "<name>: <value>"
+DEFAULT_LABEL_NAME = "Fas"
+
+
+def phase_value_key(phase: str) -> str:
+    """Option holding the label value for a phase, e.g. "1" or "R"."""
+    return f"phase_value_{phase}"
 
 # Subentry types
 SUBENTRY_LOAD = "load"

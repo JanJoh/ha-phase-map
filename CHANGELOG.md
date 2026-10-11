@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0 (unreleased)
+
+- **Phase labels on devices** (options → *Phase labels on devices*, off by default): every
+  load's meter device gets a label such as "Fas: 2"; a device that measures several phases
+  gets one per phase. The label name (default "Fas") and the value per phase (default 1, 2, 3;
+  for example R, S, T) are free text. Labels follow when a load moves or the settings change,
+  and labels HA Phase Map created are deleted once nothing uses them.
+- Only labels HA Phase Map added are ever removed; labels that were already on a device stay.
+  Turning the option off asks whether to remove the labels or keep them.
+- README: known issues link.
+
 ## 0.3.0 (unreleased)
 
 - **Phase check.** Every single-phase load's phase is checked continuously from live

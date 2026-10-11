@@ -39,7 +39,8 @@
   "options": {
     "step": {
       "init": {
-        "title": "Overload warning",
+        "title": "Options",
+        "description": "Overload warning, and labels that show which phase each load's device is on.",
         "data": {
           "margin_a": "Warning margin below the fuse rating",
           "overload_delay_s": "Delay before warning"
@@ -47,8 +48,37 @@
         "data_description": {
           "margin_a": "The overload sensor turns on when a phase gets this close to the fuse rating.",
           "overload_delay_s": "How long the phase must stay that high before the warning turns on."
+        },
+        "sections": {
+          "phase_labels": {
+            "name": "Phase labels on devices",
+            "description": "Puts a label such as \"Fas: 2\" on the device of every load's meter, so you can see and filter by phase anywhere in Home Assistant. A device that measures several phases gets one label per phase. Labels follow when a load moves.",
+            "data": {
+              "labels": "Label devices with their phase",
+              "label_name": "Label name",
+              "phase_value_L1": "Value for L1",
+              "phase_value_L2": "Value for L2",
+              "phase_value_L3": "Value for L3"
+            },
+            "data_description": {
+              "label_name": "Free text, for example Fas or Inkommande fas. The label reads \"name: value\".",
+              "phase_value_L1": "For example 1, R or L1."
+            }
+          }
+        }
+      },
+      "disable_labels": {
+        "title": "Labels set by HA Phase Map",
+        "description": "HA Phase Map has added {labels} phase labels to {devices} devices. Remove them, or keep them? Labels you set yourself are never touched.",
+        "menu_options": {
+          "remove_labels": "Remove them",
+          "keep_labels": "Keep them (HA Phase Map stops managing them)"
         }
       }
+    },
+    "error": {
+      "empty_value": "Every phase needs a label value.",
+      "same_value_twice": "Use a different label value for each phase."
     }
   },
   "selector": {

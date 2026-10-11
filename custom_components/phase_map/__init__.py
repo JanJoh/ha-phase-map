@@ -11,6 +11,7 @@ from homeassistant.helpers.typing import ConfigType
 from .const import DOMAIN
 from .engine import PhaseMapEngine
 from .entity import fuse_device
+from .labels import async_sync_labels
 from .websocket import async_register_websocket
 
 PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR]
@@ -32,6 +33,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: PhaseMapConfigEntry) -> 
     await engine.async_start()
     entry.async_on_unload(engine.async_stop)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    await async_sync_labels(hass, entry)
     # Adding, editing or removing a load or detector (subentry) or changing options reloads the entry
     entry.async_on_unload(entry.add_update_listener(_async_reload))
     return True
