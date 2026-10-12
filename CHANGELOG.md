@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.7.0 (unreleased)
+## 0.7.0 (2026-10-12)
 
 - **The card is included.** The integration serves the phase-bus card and loads it in the
   frontend itself: one install, no dashboard resource to add. The URL carries a hash of the
