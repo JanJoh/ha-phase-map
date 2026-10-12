@@ -34,6 +34,9 @@
     "abort": {
       "already_configured": "Den här huvudsäkringen är redan uppsatt.",
       "reconfigure_successful": "Huvudsäkringen uppdaterades."
+    },
+    "create_entry": {
+      "default": "Mätarsäkringen är inlagd. Lägg sedan till dina laster med **Lägg till last** på HA Phase Map-posten.\n\nFör att använda kortet på instrumentpanelen, **ladda om webbläsaren** först (Ctrl+Shift+R, eller i appen Inställningar → Companion-app → Felsökning → Återställ frontend-cache): *Phase Bus Card* syns i kortväljaren först efter en omladdning."
     }
   },
   "options": {

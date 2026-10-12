@@ -73,16 +73,24 @@ Single-phase homes and split-phase (2 × 120 V) homes work too: choose 1 or 2 ph
 
 ## Installation
 
-The repository is private while it is being tested, so install it manually for now:
+Through [HACS](https://hacs.xyz):
 
-1. Copy `custom_components/phase_map` into your Home Assistant `config/custom_components/`.
-2. Restart Home Assistant.
+[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=JanJoh&repository=ha-phase-map&category=integration)
+
+1. **HACS → ⋮ → Custom repositories**, add `https://github.com/JanJoh/ha-phase-map` with type
+   **Integration** (or use the button above).
+2. Download **HA Phase Map** and restart Home Assistant.
+3. Add the integration (see [Setup](#setup)).
+4. **Reload the browser** (Ctrl+Shift+R; in the companion app: Settings → Companion app →
+   Debugging → Reset frontend cache). The card is loaded when the page loads, so a page that
+   was open while you added the integration does not have it yet, and *Phase Bus Card* is
+   missing from the card picker until you reload.
+
+Manual install: copy `custom_components/phase_map` into `config/custom_components/` and restart.
 
 The dashboard card is included and loaded automatically: there is no separate card to install
 and no dashboard resource to add. (If you installed the card on its own earlier, you can remove
 that resource; leaving it does no harm.)
-
-Once public, it will be installable through HACS as a custom repository.
 
 ## Setup
 

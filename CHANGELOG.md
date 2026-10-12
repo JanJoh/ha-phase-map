@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.1 (2026-10-12)
+
+- **Reload note.** When the main fuse is added, the dialog now says to add loads next and to
+  reload the browser before looking for *Phase Bus Card* in the card picker (the card is loaded
+  when the page loads). The README's installation steps say the same and now describe HACS.
+
 ## 0.7.0 (2026-10-12)
 
 - **The card is included.** The integration serves the phase-bus card and loads it in the

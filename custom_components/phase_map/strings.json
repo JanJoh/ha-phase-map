@@ -34,6 +34,9 @@
     "abort": {
       "already_configured": "This main fuse is already set up.",
       "reconfigure_successful": "The main fuse was updated."
+    },
+    "create_entry": {
+      "default": "The main fuse is set up. Next, add your loads with **Add load** on the HA Phase Map entry.\n\nTo use the dashboard card, **reload the browser** first (Ctrl+Shift+R, or in the companion app Settings → Companion app → Debugging → Reset frontend cache): *Phase Bus Card* only appears in the card picker after a reload."
     }
   },
   "options": {
