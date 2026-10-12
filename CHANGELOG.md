@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.2 (2026-10-12)
+
+- Bundles phase-bus-card **0.7.0**: multi-phase loads show each phase's reading at the junction
+  in the phase colour, and the per-phase split in the box is coloured by phase.
+
 ## 0.7.1 (2026-10-12)
 
 - **Reload note.** When the main fuse is added, the dialog now says to add loads next and to

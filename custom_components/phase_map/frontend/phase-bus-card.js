@@ -9,7 +9,7 @@
  * MIT License
  */
 
-const CARD_VERSION = "0.6.0";
+const CARD_VERSION = "0.7.0";
 
 const DEFAULT_COLORS = { L1: "#b8622a", L2: "#3a7fc1", L3: "#4f8f36" };
 const ESTIMATED_COLOR = "#8a5cc2";
@@ -316,6 +316,12 @@ class PhaseBusCard extends HTMLElement {
         o.push(unv
           ? `<circle class="unv-dot" cx="${x}" cy="${busY[p]}" r="4" style="stroke:${col(p)}">${tip}</circle>`
           : `<circle cx="${x}" cy="${busY[p]}" r="5" style="fill:${col(p)}"/>`);
+        // What this phase draws, at the junction in the phase colour (measured channels only:
+        // a one-meter load's split is a rule, not a reading)
+        const pw = ld.perPhase[p];
+        if (!est && !ld.meter && pw != null && Math.round(pw) >= 1) {
+          o.push(`<text class="jw" x="${x + 7}" y="${busY[p] - 6}" style="fill:${col(p)}">${esc(fmtW(pw))}</text>`);
+        }
       });
       o.push(`<rect class="box tp${est ? " est" : ""}${ld.children?.length ? " feeds" : ""}" x="${xc - TP_W / 2}" y="${boxTop3}" width="${TP_W}" height="${TP_H}" rx="6"${est ? ` style="stroke:${ESTIMATED_COLOR}"` : ""}/>`);
       const txt = [];
@@ -333,10 +339,16 @@ class PhaseBusCard extends HTMLElement {
         else if (active.length > 1 && !ld.children?.length) {
           // the per-phase split; a box that feeds its own panel shows it there instead
           const split = active.map((p) => `${p} ${Math.round(ld.perPhase[p])}`).join(" · ");
-          if (split.length * 5.6 <= TP_W - 10) txt.push(["nm small", split]);
+          if (split.length * 5.6 <= TP_W - 10) txt.push(["nm small", split, active]);
         }
       }
-      txt.slice(0, 6).forEach(([cls, t], k) => o.push(`<text class="${cls}" x="${xc}" y="${boxTop3 + 19 + k * 16}" text-anchor="middle">${esc(t)}</text>`));
+      txt.slice(0, 6).forEach(([cls, t, split], k) => {
+        // the per-phase split, each reading in its phase colour
+        const body = split
+          ? split.map((p, i) => `${i ? '<tspan class="sep"> · </tspan>' : ""}<tspan style="fill:${col(p)}">${esc(`${p} ${Math.round(ld.perPhase[p])}`)}</tspan>`).join("")
+          : esc(t);
+        o.push(`<text class="${cls}${split ? " split" : ""}" x="${xc}" y="${boxTop3 + 19 + k * 16}" text-anchor="middle">${body}</text>`);
+      });
       anchors[ld.id] = { x: ox + xc, y: oy + boxTop3 + TP_H };
     });
     o.push("</g>");
@@ -427,6 +439,9 @@ class PhaseBusCard extends HTMLElement {
         .nm.t3 { font-weight: 600; font-size: 12.5px; }
         .nm.estc { fill: ${ESTIMATED_COLOR}; }
         .nm.small { font-size: 10.5px; fill: var(--secondary-text-color); }
+        .nm.split { font-weight: 600; }
+        .nm.split .sep { fill: var(--secondary-text-color); font-weight: 400; }
+        .jw { font: 600 10px var(--code-font-family, monospace); paint-order: stroke; stroke: var(--card-background-color, var(--ha-card-background, #fff)); stroke-width: 3px; stroke-linejoin: round; }
         .w { font: 600 13px var(--code-font-family, monospace); fill: var(--primary-text-color); }
         .w.zero { fill: var(--secondary-text-color); }
         .chips { display:flex; flex-wrap:wrap; gap:6px; padding: 8px 4px 0; }
