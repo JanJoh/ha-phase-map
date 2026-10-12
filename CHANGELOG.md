@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.8.0 (2026-10-12)
+
+- **Suggested meters** (off by default; Configure → Settings → Suggest new meters). Once a day
+  HA Phase Map looks for power and current sensors no load uses, works out their phase from
+  history (and the meter they sit behind, from the Energy dashboard or from history), and
+  offers the clearest ones as repairs, at most 5 at a time: add it as a load from a prefilled
+  form, or never suggest it again. Multi-channel meters (Shelly Pro 3EM) are one suggestion
+  with their channels matched to phases from the evidence, not the channel names; when the
+  evidence is not clear the mapping is offered as a guess.
+- **Suggest meters from the Energy dashboard** (Configure): offers the Energy dashboard's
+  individual devices that are not added yet, also while discovery is off.
+- **Configure is a menu:** Settings, Suggest meters from the Energy dashboard, Suggested meters
+  (what was found, ignore, scan now) and Ignored meters (bring them back).
+- A sensor whose load is deleted is not suggested again.
+- Diagnostics include what discovery found and skipped; new websocket command
+  `phase_map/discovery`.
+
 ## 0.7.2 (2026-10-12)
 
 - Bundles phase-bus-card **0.7.0**: multi-phase loads show each phase's reading at the junction

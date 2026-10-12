@@ -1,6 +1,6 @@
 # Meter discovery: implementation plan (target 0.8.0)
 
-*Status: draft, 2026-10-12. Open questions in section 11 are not decided yet.*
+*Status: built in 0.8.0 (2026-10-12), with the decisions in section 11. Live evidence for candidates, a card panel and reparenting suggestions are still to come (section 9).*
 
 ## 0. What was checked before designing
 
@@ -379,3 +379,19 @@ Run with `docker run --rm -v $PWD:/work -w /work phase-map-test python -m pytest
 6. **Balanced 3-phase groups:** offer them with a guessed mapping, marked as a guess. The card
    draws the guessed phases as unverified until live evidence confirms them.
 7. **Sensors hidden by the user are not considered**, for now.
+
+## 12. As built (0.8.0)
+
+Differences from the plan, found on a real installation:
+
+- Home Assistant models a Shelly Pro 3EM as a main device with **one sub-device per phase**, so
+  candidates are grouped by the physical meter (the main device, or the device a sub-device is
+  connected via), and a sub-device's phase comes from its own name ("… Phase A").
+- **Partly used meters:** when some channels of a meter are added, the free channels are offered
+  one by one (one appliance per channel), instead of the whole meter being treated as taken.
+  When the meter's total is added (a CEE outlet with one meter), its channels are not offered.
+- Sensors on a meter's main device next to per-phase sub-devices are its total.
+- PoE port power is skipped (`not_a_load`).
+- Not built yet: the hourly prefilter, backoff for unclear candidates, the quick pass after a
+  configuration change, the duplicate (`similar()`) check, the device-label hint and the
+  optional step at the end of the main-fuse setup.

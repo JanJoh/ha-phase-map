@@ -177,6 +177,7 @@ class PhaseMapEngine:
         self._seed_task = None
         self._last_compute = 0.0
         self._recompute_timer = None
+        self.discovery = None               # DiscoveryManager, set at setup
 
     # --- phase check ---------------------------------------------------------------
 

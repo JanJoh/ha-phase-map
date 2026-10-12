@@ -22,6 +22,8 @@ from .const import (
     CONF_CHANNELS,
     CONF_CONNECTED,
     CONF_DETECT_PHASES,
+    CONF_DISCOVERY,
+    CONF_DISCOVERY_CONFIDENCE,
     CONF_DRAW,
     CONF_ESTIMATED_PHASES,
     CONF_ESTIMATED_W,
@@ -41,6 +43,8 @@ from .const import (
     CONF_PORTABLE,
     CONF_SOURCES,
     CONF_VOLTAGE,
+    DEFAULT_DISCOVERY,
+    DEFAULT_DISCOVERY_CONFIDENCE,
     DEFAULT_FUSE_A,
     DEFAULT_LABEL_NAME,
     DEFAULT_MARGIN_A,
@@ -63,6 +67,7 @@ from .hierarchy import descendants
 from .labels import async_forget_labels, async_label_counts, async_remove_labels
 
 SECTION_LABELS = "phase_labels"
+SECTION_DISCOVERY = "discovery_settings"
 DRAW_PHASE = "phase"               # form value: all on the phase picked above
 SUPPORTED_UNITS = {"A", "mA", "W", "kW"}
 NO_PARENT_TEXT = {"en": "None: directly on the main fuse", "sv": "Ingen: direkt på huvudsäkringen"}
@@ -196,19 +201,106 @@ class PhaseMapConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class PhaseMapOptionsFlow(OptionsFlow):
-    """Overload warning, and optional phase labels on load devices."""
+    """Settings (overload warning, phase labels, meter discovery) and the suggested meters."""
 
     def __init__(self) -> None:
         self._pending: dict[str, Any] = {}
 
+    def _discovery(self):
+        engine = getattr(self.config_entry, "runtime_data", None)
+        return getattr(engine, "discovery", None)
+
+    def _lang(self) -> str:
+        return "sv" if (self.hass.config.language or "").startswith("sv") else "en"
+
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        return self.async_show_menu(step_id="init", menu_options=["settings", "energy_seed", "suggestions", "ignored"])
+
+    async def async_step_energy_seed(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Suggest the Energy dashboard's individual devices, also while discovery is off."""
+        manager = self._discovery()
+        if manager is None:
+            return self.async_abort(reason="not_loaded")
+        if user_input is not None:
+            manager.request("energy")
+            return self.async_create_entry(data=dict(self.config_entry.options))
+        return self.async_show_form(step_id="energy_seed", data_schema=vol.Schema({}))
+
+    async def async_step_suggestions(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """What discovery found, with a way to ignore some and to scan again."""
+        manager = self._discovery()
+        if manager is None:
+            return self.async_abort(reason="not_loaded")
+        lang = self._lang()
+        cands = manager.data.get("candidates", {})
+        listed = {k: c for k, c in cands.items() if k not in manager.data.get("ignored", {})}
+        if user_input is not None:
+            for key in user_input.get("ignore", []):
+                manager.ignore(key)
+            if user_input.get("scan_now"):
+                manager.request("scan")
+            return self.async_create_entry(data=dict(self.config_entry.options))
+        status_text = {
+            "en": {"offer": "suggested", "unclear": "could not place", "no_data": "no statistics yet"},
+            "sv": {"offer": "föreslås", "unclear": "kunde inte placeras", "no_data": "ingen statistik ännu"},
+        }[lang]
+        lines = []
+        for c in sorted(listed.values(), key=lambda c: (c.get("status") != "offer", c.get("name", ""))):
+            line = f"- **{c.get('name')}**: {status_text.get(c.get('status'), c.get('status'))}"
+            if c.get("status") == "offer":
+                line += f". {manager.describe(c, lang)}"
+            lines.append(line)
+        empty = "Inga mätare hittade ännu." if lang == "sv" else "No meters found yet."
+        options = [selector.SelectOptionDict(value=k, label=c.get("name", k)) for k, c in listed.items()]
+        fields: dict[Any, Any] = {}
+        if options:
+            fields[vol.Optional("ignore", default=[])] = selector.SelectSelector(
+                selector.SelectSelectorConfig(options=options, multiple=True, mode=selector.SelectSelectorMode.LIST)
+            )
+        if manager.enabled:
+            fields[vol.Optional("scan_now", default=False)] = selector.BooleanSelector()
+        return self.async_show_form(
+            step_id="suggestions",
+            data_schema=vol.Schema(fields),
+            description_placeholders={
+                "candidates": "\n".join(lines) or empty,
+                "last_scan": manager.data.get("last_scan") or "–",
+            },
+        )
+
+    async def async_step_ignored(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Ignored meters: untick to have them suggested again."""
+        manager = self._discovery()
+        if manager is None:
+            return self.async_abort(reason="not_loaded")
+        items = {k: v.get("name", k) for k, v in manager.data.get("ignored", {}).items()}
+        items.update({e: e for e in manager.data.get("ignored_entities", {})})
+        if user_input is not None:
+            keep = set(user_input.get("ignored", []))
+            for key in set(items) - keep:
+                manager.unignore(key)
+            return self.async_create_entry(data=dict(self.config_entry.options))
+        options = [selector.SelectOptionDict(value=k, label=name) for k, name in items.items()]
+        fields = {}
+        if options:
+            fields[vol.Optional("ignored", default=list(items))] = selector.SelectSelector(
+                selector.SelectSelectorConfig(options=options, multiple=True, mode=selector.SelectSelectorMode.LIST)
+            )
+        return self.async_show_form(step_id="ignored", data_schema=vol.Schema(fields),
+                                    description_placeholders={"count": str(len(items))})
+
+    async def async_step_settings(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         opts = self.config_entry.options
         phases = self.config_entry.data[CONF_PHASES]
         errors: dict[str, str] = {}
         if user_input is not None:
             labels_in = user_input.pop(SECTION_LABELS, {})
+            discovery_in = user_input.pop(SECTION_DISCOVERY, {})
             data = {**user_input, CONF_LABELS: bool(labels_in.get(CONF_LABELS)),
-                    CONF_LABEL_NAME: (labels_in.get(CONF_LABEL_NAME) or DEFAULT_LABEL_NAME).strip()}
+                    CONF_LABEL_NAME: (labels_in.get(CONF_LABEL_NAME) or DEFAULT_LABEL_NAME).strip(),
+                    CONF_DISCOVERY: bool(discovery_in.get(CONF_DISCOVERY, DEFAULT_DISCOVERY)),
+                    CONF_DISCOVERY_CONFIDENCE: discovery_in.get(CONF_DISCOVERY_CONFIDENCE,
+                                                                DEFAULT_DISCOVERY_CONFIDENCE)}
             values = {p: str(labels_in.get(phase_value_key(p)) or "").strip() for p in phases}
             if any(not v for v in values.values()):
                 errors["base"] = "empty_value"
@@ -235,16 +327,29 @@ class PhaseMapOptionsFlow(OptionsFlow):
                 },
             }
         )
+        discovery_schema = vol.Schema(
+            {
+                vol.Required(CONF_DISCOVERY, default=bool(opts.get(CONF_DISCOVERY, DEFAULT_DISCOVERY))):
+                    selector.BooleanSelector(),
+                vol.Required(CONF_DISCOVERY_CONFIDENCE,
+                             default=opts.get(CONF_DISCOVERY_CONFIDENCE, DEFAULT_DISCOVERY_CONFIDENCE)):
+                    selector.SelectSelector(selector.SelectSelectorConfig(
+                        options=["high", "medium"], translation_key="discovery_confidence",
+                        mode=selector.SelectSelectorMode.LIST)),
+            }
+        )
         schema = vol.Schema(
             {
                 vol.Required(CONF_MARGIN_A, default=current.get(CONF_MARGIN_A, DEFAULT_MARGIN_A)): _number(0, 50, 0.5, "A"),
                 vol.Required(CONF_OVERLOAD_DELAY, default=current.get(CONF_OVERLOAD_DELAY, DEFAULT_OVERLOAD_DELAY)):
                     _number(0, 3600, 5, "s"),
                 vol.Required(SECTION_LABELS): section(label_schema, {"collapsed": not opts.get(CONF_LABELS)}),
+                vol.Optional(SECTION_DISCOVERY, default={}): section(discovery_schema,
+                                                         {"collapsed": not opts.get(CONF_DISCOVERY, DEFAULT_DISCOVERY)}),
             }
         )
         return self.async_show_form(
-            step_id="init",
+            step_id="settings",
             data_schema=schema,
             errors=errors,
             description_placeholders={"phases": ", ".join(phases)},

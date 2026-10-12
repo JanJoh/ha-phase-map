@@ -117,13 +117,16 @@ Then, on the HA Phase Map entry, add:
 - **Detector**: phases, minimum extra current per phase (an 8 kW three-phase sauna adds about
   11 A per phase), and delays. The off-delay keeps it on while a thermostat cycles.
 
-Use **⋮ → Reconfigure** to change the fuse or its sensors, and **Configure** for the overload
-warning margin and delay and for phase labels.
+Use **⋮ → Reconfigure** to change the fuse or its sensors. **Configure** has the settings
+(overload warning margin and delay, phase labels, looking for new meters) and the suggested and
+ignored meters.
 
 ### What HA Phase Map works out by itself, and what it doesn't
 
-- **You add every load yourself.** It does not look for new power meters or add them on its
-  own. (Suggesting meters you have not added yet is planned.)
+- **New meters, if you turn it on:** it looks once a day for power and current sensors you
+  have not added, works out their phase (and the meter they sit behind), and offers the clearest
+  ones under **Settings → Repairs**. It never adds anything by itself. See
+  [Suggested meters](#suggested-meters).
 - **The phase, when you add a load:** it suggests the phase from the last 10 days of history.
   See [How the phase suggestion works](#how-the-phase-suggestion-works).
 - **Which meter a load sits behind:** *Measured by* is pre-selected from the Energy dashboard's
@@ -135,6 +138,45 @@ warning margin and delay and for phase labels.
   per phase no meter explains, not what is drawing it. A
   [detector](#entities) turns that into an on/off signal for a load you know about, like a
   sauna.
+
+### Suggested meters
+
+HA Phase Map can look for meters you have not added yet and offer them, one repair at a time.
+It is **off by default**: turn it on under **Configure → Settings → Suggest new meters**.
+
+- **What it looks at:** sensors with device class *power* or *current*, state class
+  *measurement* and unit W, kW, A or mA that no load uses. Skipped: the main-fuse meter and the
+  other sensors of its device, energy (kWh) sensors, computed sensors (template, group,
+  utility meter, powercalc and similar), hidden and disabled entities, and the power a network
+  switch delivers over PoE.
+- **One meter, one suggestion:** a sensor's power and current versions count once. The unit
+  of your main-fuse sensors wins (current when they are in A), because then nothing is lost to
+  power factor or voltage. A three-channel meter such as a Shelly Pro 3EM becomes **one
+  multi-phase suggestion**, and its total is skipped. If some of its channels are already added
+  (one appliance per channel), the free channels are suggested one by one. If its total is
+  added (a CEE outlet with one meter), its channels are the same circuit and are not suggested.
+- **The phase comes from the evidence, never from the name.** A channel called *c* or *L3*
+  can be on any phase. A multi-phase meter's channels are matched to phases from the steps
+  each one makes on its own. When that is not clear (a balanced 3-phase load that only ever
+  switches on all phases at once), the mapping is offered as a guess, and you check it before
+  adding.
+- **Behind another meter:** taken from the Energy dashboard's *upstream device* when there is
+  one, otherwise from history (the meter only ever steps together with one channel of a
+  multi-channel meter you have added).
+- **Only the clear ones:** high confidence by default (medium is a setting), at most **5** open
+  at a time. When you add or ignore one, the next one appears. A scan runs once a day, 10
+  minutes after Home Assistant starts the first time.
+- **Each repair** offers *Add it as a load* (a form prefilled with the name, phase or channels
+  and the meter it sits behind) or *Not a load: don't suggest it again*. Ignoring it in the
+  Repairs list works too. A sensor whose load you delete is not suggested again either.
+  **Configure → Ignored meters** brings them back.
+- **Configure → Suggested meters** lists everything it found, also the ones it could not place,
+  and can scan again now.
+
+**From the Energy dashboard:** the devices under *Individual devices* in the Energy dashboard
+are meters you have already picked out. **Configure → Suggest meters from the Energy
+dashboard** offers those that are not added yet (from medium confidence), also while looking
+for new meters is off. It is the quickest way to set up a new main fuse.
 
 ### How the phase suggestion works
 
@@ -289,6 +331,7 @@ The card uses these commands; other frontends can too.
 | `phase_map/subscribe` `{entry_id}` | Live layout and values, pushed on every change |
 | `phase_map/average` `{entry_id, days}` | Average power per phase and per load from statistics |
 | `phase_map/suggest_phase` `{entry_id, entity_id, days}` | Which phase a meter is probably on, with scores per phase |
+| `phase_map/discovery` `{entry_id}` | Meters found but not added (with the evidence), the ignored ones and the open suggestions |
 
 ## Known issues
 

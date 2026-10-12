@@ -61,3 +61,10 @@ BASELINE_WINDOW = 6 * 60          # keep 6 hours of samples
 BASELINE_QUANTILE = 0.2           # 20th percentile = typical quiet level
 
 SIGNAL_UPDATE = f"{DOMAIN}_update_{{}}"   # .format(entry_id)
+
+# Meter discovery: suggest power/current sensors that are not added yet (off by default)
+CONF_DISCOVERY = "discovery"
+CONF_DISCOVERY_CONFIDENCE = "discovery_min_confidence"   # "high" or "medium"
+DEFAULT_DISCOVERY = False
+DEFAULT_DISCOVERY_CONFIDENCE = "high"
+ISSUE_NEW_METER = "meter_"        # repair issue id prefix: meter_<entry_id>_<hash>

@@ -95,6 +95,7 @@ async def test_own_labels_are_left_alone(hass: HomeAssistant) -> None:
 
 async def _disable(hass, entry, choice):
     result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "settings"})
     labels = {"labels": False, "label_name": "Fas", "phase_value_L1": "1", "phase_value_L2": "2",
               "phase_value_L3": "3"}
     result = await hass.config_entries.options.async_configure(
@@ -131,6 +132,7 @@ async def test_disable_and_keep(hass: HomeAssistant) -> None:
 async def test_options_validation(hass: HomeAssistant) -> None:
     entry, _ = await _setup(hass)
     result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": "settings"})
     result = await hass.config_entries.options.async_configure(result["flow_id"], {
         "margin_a": 1.0, "overload_delay_s": 60,
         "phase_labels": {"labels": True, "label_name": "Fas", "phase_value_L1": "R", "phase_value_L2": "R",

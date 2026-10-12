@@ -43,6 +43,16 @@
     "step": {
       "init": {
         "title": "Alternativ",
+        "description": "Inställningar, och mätare som HA Phase Map har hittat men som inte är tillagda.",
+        "menu_options": {
+          "settings": "Inställningar",
+          "energy_seed": "Föreslå mätare från Energipanelen",
+          "suggestions": "Föreslagna mätare",
+          "ignored": "Ignorerade mätare"
+        }
+      },
+      "settings": {
+        "title": "Inställningar",
         "description": "Överlastvarning, och etiketter som visar vilken fas varje lasts enhet sitter på.",
         "data": {
           "margin_a": "Varningsmarginal under säkringen",
@@ -67,6 +77,17 @@
               "label_name": "Fritext, till exempel Fas eller Inkommande fas. Etiketten blir \"namn: värde\".",
               "phase_value_L1": "Till exempel 1, R eller L1."
             }
+          },
+          "discovery_settings": {
+            "name": "Föreslå nya mätare",
+            "description": "Leta en gång om dygnet efter effekt- och strömsensorer som inte är tillagda som laster, räkna ut deras fas från historiken och föreslå de tydligaste under Inställningar → Reparationer (högst 5 åt gången). Inget läggs till utan att du bekräftar det.",
+            "data": {
+              "discovery": "Leta efter nya mätare",
+              "discovery_min_confidence": "Föreslå mätare med"
+            },
+            "data_description": {
+              "discovery_min_confidence": "Hur tydligt underlaget måste vara. Mätare som finns i Energipanelen föreslås alltid från medel."
+            }
           }
         }
       },
@@ -77,11 +98,33 @@
           "remove_labels": "Ta bort dem",
           "keep_labels": "Behåll dem (HA Phase Map slutar hantera dem)"
         }
+      },
+      "energy_seed": {
+        "title": "Föreslå mätare från Energipanelen",
+        "description": "Enheterna under *Enskilda enheter* i Energipanelen är mätare du redan har valt ut. HA Phase Map räknar ut fasen för dem som inte är tillagda (och mätaren de sitter bakom, från *uppströms enhet*) och föreslår dem under **Inställningar → Reparationer** inom en minut. Det fungerar även när *Leta efter nya mätare* är avstängt."
+      },
+      "suggestions": {
+        "title": "Föreslagna mätare",
+        "description": "Senaste sökning: {last_scan}\n\n{candidates}\n\nDe tydligaste föreslås under **Inställningar → Reparationer**.",
+        "data": {
+          "ignore": "Ignorera dessa (föreslå dem inte igen)",
+          "scan_now": "Sök igen nu"
+        }
+      },
+      "ignored": {
+        "title": "Ignorerade mätare",
+        "description": "{count} mätare ignoreras. Avmarkera en för att få den föreslagen igen.",
+        "data": {
+          "ignored": "Ignorerade"
+        }
       }
     },
     "error": {
       "empty_value": "Varje fas behöver ett etikettvärde.",
       "same_value_twice": "Använd olika etikettvärden för faserna."
+    },
+    "abort": {
+      "not_loaded": "HA Phase Map körs inte; försök igen när integrationen är laddad."
     }
   },
   "selector": {
@@ -96,6 +139,12 @@
       "options": {
         "phase": "Allt på fasen ovan",
         "equal": "Jämnt fördelat över de anslutna faserna"
+      }
+    },
+    "discovery_confidence": {
+      "options": {
+        "high": "Endast hög säkerhet",
+        "medium": "Medel eller hög säkerhet"
       }
     }
   },
@@ -287,6 +336,104 @@
         },
         "abort": {
           "load_gone": "Lasten finns inte längre eller är inte längre en enfaslast."
+        }
+      }
+    },
+    "new_meter": {
+      "title": "Ny mätare hittad: {name}",
+      "fix_flow": {
+        "step": {
+          "init": {
+            "title": "{name}",
+            "description": "{details}\n\nLägga till den som last, eller aldrig föreslå den igen?",
+            "menu_options": {
+              "add": "Lägg till som last",
+              "ignore": "Inte en last: föreslå den inte igen"
+            }
+          },
+          "add": {
+            "title": "Lägg till {name}",
+            "description": "{details}",
+            "data": {
+              "name": "Namn",
+              "phase": "Fas",
+              "parent": "Mäts av",
+              "portable": "Flyttbar"
+            },
+            "data_description": {
+              "parent": "Om en annan tillagd mätare också mäter den (garaget eller en undercentral), välj den mätaren.",
+              "portable": "Den flyttas mellan uttag: följ med till en ny fas utan att fråga."
+            }
+          },
+          "add_multi": {
+            "title": "Lägg till {name}",
+            "description": "{details}\n\nKontrollera vilken sensor som sitter på vilken fas.",
+            "data": {
+              "name": "Namn",
+              "L1": "L1",
+              "L2": "L2",
+              "L3": "L3",
+              "parent": "Mäts av"
+            }
+          }
+        },
+        "error": {
+          "no_meter": "Välj minst en sensor.",
+          "unsupported_unit": "Sensorn måste rapportera A, mA, W eller kW.",
+          "outside_parent": "Mätaren den sitter bakom mäter inte den fasen."
+        },
+        "abort": {
+          "candidate_gone": "Mätaren föreslås inte längre.",
+          "already_added": "Mätaren är redan tillagd."
+        }
+      }
+    },
+    "new_multi_meter": {
+      "title": "Ny flerfasmätare hittad: {name}",
+      "fix_flow": {
+        "step": {
+          "init": {
+            "title": "{name}",
+            "description": "{details}\n\nLägga till den som last, eller aldrig föreslå den igen?",
+            "menu_options": {
+              "add": "Lägg till som last",
+              "ignore": "Inte en last: föreslå den inte igen"
+            }
+          },
+          "add": {
+            "title": "Lägg till {name}",
+            "description": "{details}",
+            "data": {
+              "name": "Namn",
+              "phase": "Fas",
+              "parent": "Mäts av",
+              "portable": "Flyttbar"
+            },
+            "data_description": {
+              "parent": "Om en annan tillagd mätare också mäter den (garaget eller en undercentral), välj den mätaren.",
+              "portable": "Den flyttas mellan uttag: följ med till en ny fas utan att fråga."
+            }
+          },
+          "add_multi": {
+            "title": "Lägg till {name}",
+            "description": "{details}\n\nKontrollera vilken sensor som sitter på vilken fas.",
+            "data": {
+              "name": "Namn",
+              "L1": "L1",
+              "L2": "L2",
+              "L3": "L3",
+              "parent": "Mäts av"
+            }
+          }
+        },
+        "error": {
+          "no_meter": "Välj minst en sensor.",
+          "unsupported_unit": "Sensorn måste rapportera A, mA, W eller kW.",
+          "outside_parent": "Mätaren den sitter bakom mäter inte den fasen."
+        },
+        "abort": {
+          "candidate_gone": "Mätaren föreslås inte längre.",
+          "already_added": "Mätaren är redan tillagd."
         }
       }
     }

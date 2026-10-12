@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import timedelta
-from itertools import pairwise
+from itertools import pairwise, permutations
 import math
 import statistics
 from typing import Any
@@ -29,6 +29,8 @@ MAX_THRESHOLD_A = 0.8
 MIN_STEPS = 4
 MIN_T = 3.0
 MIN_GAIN = 0.5
+CONFOUND_RATIO = 0.3         # a sibling channel moving by more than this share spoils a step
+GROUP_MARGIN = 1.5           # the best channel→phase mapping must beat the runner-up by this
 
 
 @dataclass
@@ -59,8 +61,17 @@ class Suggestion:
         }
 
 
-def analyse(meter: dict[float, float], phases: dict[str, dict[float, float]], step_s: float = STEP_S) -> Suggestion:
-    """Score each phase for a meter. Series are {timestamp: amps}."""
+def analyse(
+    meter: dict[float, float],
+    phases: dict[str, dict[float, float]],
+    step_s: float = STEP_S,
+    confounders: list[dict[float, float]] | None = None,
+) -> Suggestion:
+    """Score each phase for a meter. Series are {timestamp: amps}.
+
+    `confounders` are other series (the sibling channels of a multi-channel meter) whose
+    simultaneous steps would blur the picture: steps where one of them moved too are skipped.
+    """
     common = sorted(set(meter).intersection(*[set(v) for v in phases.values()])) if phases else []
     pairs = [(a, b) for a, b in pairwise(common) if abs((b - a) - step_s) < 1]
     dx = [meter[b] - meter[a] for a, b in pairs]
@@ -69,6 +80,11 @@ def analyse(meter: dict[float, float], phases: dict[str, dict[float, float]], st
     biggest = max(abs(x) for x in dx)
     threshold = max(MIN_STEP_A, min(MAX_THRESHOLD_A, 0.25 * biggest))
     idx = [i for i, x in enumerate(dx) if abs(x) >= threshold]
+    if confounders:
+        def spoiled(i: int) -> bool:
+            a, b = pairs[i]
+            return any(a in c and b in c and abs(c[b] - c[a]) > CONFOUND_RATIO * abs(dx[i]) for c in confounders)
+        idx = [i for i in idx if not spoiled(i)]
     if len(idx) < MIN_STEPS:
         return Suggestion(None, "none", len(idx), reason="too_few_steps")
     mag = statistics.mean(abs(dx[i]) for i in idx)
@@ -88,6 +104,72 @@ def analyse(meter: dict[float, float], phases: dict[str, dict[float, float]], st
         return Suggestion(None, "none", len(idx), scores, reason="unclear")
     high = best.t >= 6 and 0.7 <= (best.gain or 0) <= 1.5 and len(idx) >= 10
     return Suggestion(best_phase, "high" if high else "medium", len(idx), scores, reason="ok")
+
+
+@dataclass
+class GroupSuggestion:
+    """Which phase each channel of a multi-channel meter is on."""
+
+    mapping: dict[str, str]            # phase -> channel key
+    confidence: str                    # "high", "medium" or "guess"
+    reason: str = ""
+    channels: dict[str, Suggestion] = field(default_factory=dict)
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "mapping": self.mapping,
+            "confidence": self.confidence,
+            "reason": self.reason,
+            "channels": {k: v.as_dict() for k, v in self.channels.items()},
+        }
+
+
+def analyse_group(channels: dict[str, dict[float, float]], phases: dict[str, dict[float, float]],
+                  step_s: float = STEP_S) -> GroupSuggestion:
+    """Map the channels of one meter (a Shelly Pro 3EM, a garage meter) to phases.
+
+    Each channel is scored on its own steps, skipping the ones where a sibling channel moved
+    at the same time. The channel→phase permutation with the highest total t wins. When the
+    evidence is not clear (a balanced 3-phase load only ever steps on all channels at once,
+    or a channel never switches), the best permutation is still returned as a guess.
+    """
+    keys = sorted(channels)
+    per = {
+        k: analyse(channels[k], phases, step_s, [channels[o] for o in keys if o != k])
+        for k in keys
+    }
+    names = list(phases)
+    if len(keys) > len(names):
+        return GroupSuggestion({}, "none", "too_many_channels", per)
+
+    def t_of(k: str, p: str) -> float:
+        score = per[k].scores.get(p)
+        return score.t if score else 0.0
+
+    ranked = sorted(
+        ((sum(t_of(k, p) for k, p in zip(keys, perm, strict=True)), perm)
+         for perm in permutations(names, len(keys))),
+        key=lambda x: x[0], reverse=True,
+    )
+    best_sum, best = ranked[0]
+    runner_up = ranked[1][0] if len(ranked) > 1 else 0.0
+    mapping = {p: k for k, p in zip(keys, best, strict=True)}
+
+    def level(k: str, p: str) -> str:
+        sug, score = per[k], per[k].scores.get(p)
+        if not score or score.t < MIN_T or (score.gain or 0) < MIN_GAIN:
+            return "none"
+        return "high" if score.t >= 6 and 0.7 <= (score.gain or 0) <= 1.5 and sug.steps >= 10 else "medium"
+
+    levels = [level(k, p) for p, k in mapping.items()]
+    clear = best_sum > 0 and (runner_up <= 0 or best_sum >= GROUP_MARGIN * runner_up)
+    if clear and all(lv != "none" for lv in levels):
+        return GroupSuggestion(mapping, "high" if all(lv == "high" for lv in levels) else "medium", "ok", per)
+    reason = "balanced" if all(per[k].steps == 0 for k in keys) or not clear else "unclear"
+    if best_sum <= 0:
+        # Nothing to go on: keep the channels in their own order (l1, l2, l3 or a, b, c)
+        mapping = dict(zip(names, keys, strict=False))
+    return GroupSuggestion(mapping, "guess", reason, per)
 
 
 def _series(rows: list[dict[str, Any]], factor: float, key: str = "mean") -> dict[float, float]:
@@ -111,7 +193,7 @@ async def async_fetch_means(
     hass: HomeAssistant, entity_units: dict[str, str | None], voltage: float, days: float, period: str,
     key: str = "mean",
 ) -> dict[str, dict[float, float]]:
-    """Mean (or max) statistics in amps for several entities over the last `days`."""
+    """Mean (or max, min) statistics in amps for several entities over the last `days`."""
     from homeassistant.components.recorder import get_instance
     from homeassistant.components.recorder.statistics import statistics_during_period
 

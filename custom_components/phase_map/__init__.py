@@ -9,10 +9,15 @@ from pathlib import Path
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import config_validation as cv, device_registry as dr
+from homeassistant.helpers import (
+    config_validation as cv,
+    device_registry as dr,
+    issue_registry as ir,
+)
 from homeassistant.helpers.typing import ConfigType
 
-from .const import DOMAIN
+from .const import DOMAIN, ISSUE_NEW_METER
+from .discovery import DiscoveryManager, async_remove_store
 from .engine import PhaseMapEngine
 from .entity import fuse_device
 from .labels import async_sync_labels
@@ -60,6 +65,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: PhaseMapConfigEntry) -> 
     entry.async_on_unload(engine.async_stop)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     await async_sync_labels(hass, entry)
+    engine.discovery = DiscoveryManager(hass, entry, engine)
+    await engine.discovery.async_start()
+    entry.async_on_unload(engine.discovery.async_stop)
     # Adding, editing or removing a load or detector (subentry) or changing options reloads the entry
     entry.async_on_unload(entry.add_update_listener(_async_reload))
     return True
@@ -71,3 +79,12 @@ async def _async_reload(hass: HomeAssistant, entry: PhaseMapConfigEntry) -> None
 
 async def async_unload_entry(hass: HomeAssistant, entry: PhaseMapConfigEntry) -> bool:
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: PhaseMapConfigEntry) -> None:
+    """The main fuse is deleted: drop its suggestions and their stored state."""
+    await async_remove_store(hass, entry.entry_id)
+    prefix = f"{ISSUE_NEW_METER}{entry.entry_id}_"
+    for domain, issue_id in list(ir.async_get(hass).issues):
+        if domain == DOMAIN and issue_id.startswith(prefix):
+            ir.async_delete_issue(hass, DOMAIN, issue_id)

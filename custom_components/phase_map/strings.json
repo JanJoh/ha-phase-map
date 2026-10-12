@@ -43,6 +43,16 @@
     "step": {
       "init": {
         "title": "Options",
+        "description": "Settings, and the meters HA Phase Map has found but you have not added.",
+        "menu_options": {
+          "settings": "Settings",
+          "energy_seed": "Suggest meters from the Energy dashboard",
+          "suggestions": "Suggested meters",
+          "ignored": "Ignored meters"
+        }
+      },
+      "settings": {
+        "title": "Settings",
         "description": "Overload warning, and labels that show which phase each load's device is on.",
         "data": {
           "margin_a": "Warning margin below the fuse rating",
@@ -67,6 +77,17 @@
               "label_name": "Free text, for example Fas or Inkommande fas. The label reads \"name: value\".",
               "phase_value_L1": "For example 1, R or L1."
             }
+          },
+          "discovery_settings": {
+            "name": "Suggest new meters",
+            "description": "Once a day, look for power and current sensors that are not added as loads, work out their phase from history, and offer the clearest ones under Settings → Repairs (at most 5 at a time). Nothing is added without you confirming it.",
+            "data": {
+              "discovery": "Look for new meters",
+              "discovery_min_confidence": "Suggest meters with"
+            },
+            "data_description": {
+              "discovery_min_confidence": "How clear the evidence must be. Meters listed in the Energy dashboard are always suggested from medium."
+            }
           }
         }
       },
@@ -77,11 +98,33 @@
           "remove_labels": "Remove them",
           "keep_labels": "Keep them (HA Phase Map stops managing them)"
         }
+      },
+      "energy_seed": {
+        "title": "Suggest meters from the Energy dashboard",
+        "description": "The devices listed under *Individual devices* in the Energy dashboard are meters you have already picked out. HA Phase Map works out the phase of those not added yet (and the meter they sit behind, from *upstream device*) and offers them under **Settings → Repairs** within a minute. This works also while *Look for new meters* is off."
+      },
+      "suggestions": {
+        "title": "Suggested meters",
+        "description": "Last scan: {last_scan}\n\n{candidates}\n\nThe clearest ones are offered under **Settings → Repairs**.",
+        "data": {
+          "ignore": "Ignore these (do not suggest them again)",
+          "scan_now": "Scan again now"
+        }
+      },
+      "ignored": {
+        "title": "Ignored meters",
+        "description": "{count} meters are ignored. Untick one to have it suggested again.",
+        "data": {
+          "ignored": "Ignored"
+        }
       }
     },
     "error": {
       "empty_value": "Every phase needs a label value.",
       "same_value_twice": "Use a different label value for each phase."
+    },
+    "abort": {
+      "not_loaded": "HA Phase Map is not running; try again when the integration is loaded."
     }
   },
   "selector": {
@@ -96,6 +139,12 @@
       "options": {
         "phase": "All on the phase above",
         "equal": "Split equally over the connected phases"
+      }
+    },
+    "discovery_confidence": {
+      "options": {
+        "high": "High confidence only",
+        "medium": "Medium or high confidence"
       }
     }
   },
@@ -287,6 +336,104 @@
         },
         "abort": {
           "load_gone": "The load no longer exists or is no longer a single-phase load."
+        }
+      }
+    },
+    "new_meter": {
+      "title": "New meter found: {name}",
+      "fix_flow": {
+        "step": {
+          "init": {
+            "title": "{name}",
+            "description": "{details}\n\nAdd it as a load, or never suggest it again?",
+            "menu_options": {
+              "add": "Add it as a load",
+              "ignore": "Not a load: don't suggest it again"
+            }
+          },
+          "add": {
+            "title": "Add {name}",
+            "description": "{details}",
+            "data": {
+              "name": "Name",
+              "phase": "Phase",
+              "parent": "Measured by",
+              "portable": "Portable"
+            },
+            "data_description": {
+              "parent": "If another meter you have added also measures it (a garage or sub-panel meter), pick that meter.",
+              "portable": "It is moved between sockets: follow it to a new phase without asking."
+            }
+          },
+          "add_multi": {
+            "title": "Add {name}",
+            "description": "{details}\n\nCheck which sensor is on which phase.",
+            "data": {
+              "name": "Name",
+              "L1": "L1",
+              "L2": "L2",
+              "L3": "L3",
+              "parent": "Measured by"
+            }
+          }
+        },
+        "error": {
+          "no_meter": "Pick at least one sensor.",
+          "unsupported_unit": "The sensor must report A, mA, W or kW.",
+          "outside_parent": "The meter it sits behind does not measure that phase."
+        },
+        "abort": {
+          "candidate_gone": "This meter is no longer suggested.",
+          "already_added": "This meter has been added already."
+        }
+      }
+    },
+    "new_multi_meter": {
+      "title": "New multi-phase meter found: {name}",
+      "fix_flow": {
+        "step": {
+          "init": {
+            "title": "{name}",
+            "description": "{details}\n\nAdd it as a load, or never suggest it again?",
+            "menu_options": {
+              "add": "Add it as a load",
+              "ignore": "Not a load: don't suggest it again"
+            }
+          },
+          "add": {
+            "title": "Add {name}",
+            "description": "{details}",
+            "data": {
+              "name": "Name",
+              "phase": "Phase",
+              "parent": "Measured by",
+              "portable": "Portable"
+            },
+            "data_description": {
+              "parent": "If another meter you have added also measures it (a garage or sub-panel meter), pick that meter.",
+              "portable": "It is moved between sockets: follow it to a new phase without asking."
+            }
+          },
+          "add_multi": {
+            "title": "Add {name}",
+            "description": "{details}\n\nCheck which sensor is on which phase.",
+            "data": {
+              "name": "Name",
+              "L1": "L1",
+              "L2": "L2",
+              "L3": "L3",
+              "parent": "Measured by"
+            }
+          }
+        },
+        "error": {
+          "no_meter": "Pick at least one sensor.",
+          "unsupported_unit": "The sensor must report A, mA, W or kW.",
+          "outside_parent": "The meter it sits behind does not measure that phase."
+        },
+        "abort": {
+          "candidate_gone": "This meter is no longer suggested.",
+          "already_added": "This meter has been added already."
         }
       }
     }

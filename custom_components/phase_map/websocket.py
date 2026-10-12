@@ -4,6 +4,7 @@
 - phase_map/subscribe {entry_id}     → live layout and values, pushed on every change
 - phase_map/average {entry_id, days} → average power per phase and per load from statistics
 - phase_map/suggest_phase {entry_id, entity_id, days} → which phase a meter is probably on
+- phase_map/discovery {entry_id}      → meters found but not added, and the ignored ones
 """
 
 from __future__ import annotations
@@ -27,6 +28,7 @@ def async_register_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_subscribe)
     websocket_api.async_register_command(hass, ws_average)
     websocket_api.async_register_command(hass, ws_suggest_phase)
+    websocket_api.async_register_command(hass, ws_discovery)
 
 
 def _engine(hass: HomeAssistant, entry_id: str):
@@ -134,3 +136,15 @@ async def ws_suggest_phase(hass: HomeAssistant, connection: websocket_api.Active
         return
     result = await async_suggest_phase(hass, msg["entity_id"], engine.sources, engine.voltage, msg["days"])
     connection.send_result(msg["id"], result.as_dict())
+
+
+@websocket_api.websocket_command({vol.Required("type"): "phase_map/discovery", vol.Required("entry_id"): str})
+@callback
+def ws_discovery(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    engine = _engine(hass, msg["entry_id"])
+    manager = getattr(engine, "discovery", None) if engine else None
+    if manager is None:
+        connection.send_error(msg["id"], "not_found", "No loaded HA Phase Map entry with that id")
+        return
+    data = manager.as_dict()
+    connection.send_result(msg["id"], {k: data[k] for k in ("enabled", "last_scan", "candidates", "ignored", "open")})

@@ -2,7 +2,8 @@
 
 Everything a bug report needs: the main fuse and every load and detector as configured,
 how loads nest, the live snapshot the card draws, the phase check's evidence per load,
-which phases of multi-phase loads are verified, and the state of every meter involved.
+which phases of multi-phase loads are verified, the state of every meter involved, and what
+meter discovery found and skipped.
 Load names are kept (they are what the reporter will refer to); nothing here is a secret.
 """
 
@@ -42,4 +43,5 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: PhaseMa
         "baseline_a": engine.baseline,
         "snapshot": engine.payload(),
         "meters": meters,
+        "discovery": engine.discovery.as_dict() if getattr(engine, "discovery", None) else None,
     }
