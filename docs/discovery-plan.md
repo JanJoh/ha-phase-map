@@ -374,7 +374,7 @@ Run with `docker run --rm -v $PWD:/work -w /work phase-map-test python -m pytest
 4. **Power or current:** pick the unit that matches the main fuse's sensors (current when the
    fuse is measured in A, power when in W), because then the gain is about 1 with no
    power-factor or voltage error. If only one is available, use it. The Energy dashboard's
-   `stat_rate` decides only between equal choices. *(Proposed, to be confirmed.)*
+   `stat_rate` decides only between equal choices. *(Confirmed.)*
 5. **Deleting a load ignores its sensor** from then on (reason `removed_load`), for now.
 6. **Balanced 3-phase groups:** offer them with a guessed mapping, marked as a guess. The card
    draws the guessed phases as unverified until live evidence confirms them.
