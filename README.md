@@ -120,6 +120,31 @@ Then, on the HA Phase Map entry, add:
 Use **⋮ → Reconfigure** to change the fuse or its sensors, and **Configure** for the overload
 warning margin and delay and for phase labels.
 
+### What HA Phase Map works out by itself, and what it doesn't
+
+- **You add every load yourself.** It does not look for new power meters or add them on its
+  own. (Suggesting meters you have not added yet is planned.)
+- **The phase, when you add a load:** it suggests the phase from the last 10 days of history.
+  See [How the phase suggestion works](#how-the-phase-suggestion-works).
+- **Which meter a load sits behind:** *Measured by* is pre-selected from the Energy dashboard's
+  upstream devices. See [Meters behind other meters](#meters-behind-other-meters).
+- **Whether a load has moved:** after setup it watches every single-phase load's switch events
+  and raises a repair when one seems to be on another phase. See
+  [When a load moves to another phase](#when-a-load-moves-to-another-phase).
+- **Not which unmetered load is running:** the unmetered current sensors say how much current
+  per phase no meter explains, not what is drawing it. A
+  [detector](#entities) turns that into an on/off signal for a load you know about, like a
+  sauna.
+
+### How the phase suggestion works
+
+Every time a meter steps up or down, the main-fuse phase it sits on should step by about the
+same current while the other phases stay flat. The integration takes the meter's steps from
+the 5-minute statistics, averages each phase's response in the direction of the step, and
+reports the **gain** (about 1.0 on the right phase) and how clearly it stands out. Big loads
+(dishwasher, oven, heat pump) are found within days; fridges need about 10 days; a load that
+never switches (a UPS) cannot be placed from history.
+
 ### Phase labels on devices
 
 Under **Configure → Phase labels on devices**, HA Phase Map can put a label on the device of
@@ -202,15 +227,6 @@ another meter moved at the same time are skipped.
 
 Loads that rarely switch (a UPS) or draw less than about 0.5 A cannot be checked this way.
 The check relies on main-fuse readings that update within seconds (see *Before you start*).
-
-### How the phase suggestion works
-
-Every time a meter steps up or down, the main-fuse phase it sits on should step by about the
-same current while the other phases stay flat. The integration takes the meter's steps from
-the 5-minute statistics, averages each phase's response in the direction of the step, and
-reports the **gain** (about 1.0 on the right phase) and how clearly it stands out. Big loads
-(dishwasher, oven, heat pump) are found within days; fridges need about 10 days; a load that
-never switches (a UPS) cannot be placed from history.
 
 ## Entities
 
