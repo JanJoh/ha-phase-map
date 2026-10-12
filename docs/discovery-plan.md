@@ -362,11 +362,20 @@ Run with `docker run --rm -v $PWD:/work -w /work phase-map-test python -m pytest
 - **Several `phase_map` entries** (two main fuses) could offer the same sensor twice. Exclusion of "used anywhere" covers added sensors. For unadded ones, offer them only in the entry where the evidence is clear, with the lowest entry_id breaking ties.
 - **The options flow becomes a menu**, which is a small UX change and needs test updates.
 
-## 11. Open questions
-1. Should discovery be **on by default**, including for existing installs when they upgrade to 0.8.0?
-2. Is the default minimum confidence **high** right, and **5** open suggestions at a time? Or would you prefer one combined "N meters found" issue?
-3. Should `powercalc` and `template` power sensors be offered? The plan excludes powercalc and allows template.
-4. Twins: prefer **current (A)** over power (W) when both exist? Your smart plugs are added by power today.
-5. Should deleting a load **automatically ignore** its sensor?
-6. Balanced 3-phase groups: list them only in options as "could not place" (the plan), or offer them with an unverified mapping?
-7. Should hidden entities (hidden by you) be considered?
+## 11. Decisions (2026-10-12)
+
+1. **Off by default**, also on upgrade. **Energy dashboard as a seed:** the devices listed under
+   *Individual devices* (`device_consumption` with a `stat_rate`) are meters the user has already
+   picked out. Offer them first, with a lower bar (medium confidence), and use `included_in_stat`
+   for the parent. A one-time "Suggest meters from the Energy dashboard" action is available in
+   Configure even with discovery off, and as an optional step at the end of the main-fuse setup.
+2. **High confidence, at most 5 open at a time, one repair per meter** (granular), as planned.
+3. **powercalc and template power sensors are excluded** for now.
+4. **Power or current:** pick the unit that matches the main fuse's sensors (current when the
+   fuse is measured in A, power when in W), because then the gain is about 1 with no
+   power-factor or voltage error. If only one is available, use it. The Energy dashboard's
+   `stat_rate` decides only between equal choices. *(Proposed, to be confirmed.)*
+5. **Deleting a load ignores its sensor** from then on (reason `removed_load`), for now.
+6. **Balanced 3-phase groups:** offer them with a guessed mapping, marked as a guess. The card
+   draws the guessed phases as unverified until live evidence confirms them.
+7. **Sensors hidden by the user are not considered**, for now.
