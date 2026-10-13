@@ -1,4 +1,4 @@
-"""Constants for HA Phase Map."""
+"""Constants for Phase Map."""
 
 from __future__ import annotations
 

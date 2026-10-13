@@ -1,1 +1,1 @@
-"""Tests for HA Phase Map."""
+"""Tests for Phase Map."""

@@ -89,7 +89,7 @@ async def test_own_labels_are_left_alone(hass: HomeAssistant) -> None:
     sub = entry.subentries["sub_kettle"]
     hass.config_entries.async_update_subentry(entry, sub, data={**sub.data, "channels": {"L3": "sensor.kettle_power"}})
     await hass.async_block_till_done()
-    # "Fas: 2" was already there before HA Phase Map, so it stays
+    # "Fas: 2" was already there before Phase Map, so it stays
     assert _names(hass, ids["kettle"]) == {"Fas: 2", "Fas: 3"}
 
 

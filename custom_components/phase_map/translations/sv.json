@@ -36,14 +36,14 @@
       "reconfigure_successful": "Huvudsäkringen uppdaterades."
     },
     "create_entry": {
-      "default": "Mätarsäkringen är inlagd. Lägg sedan till dina laster med **Lägg till last** på HA Phase Map-posten.\n\nFör att använda kortet på instrumentpanelen, **ladda om webbläsaren** först (Ctrl+Shift+R, eller i appen Inställningar → Companion-app → Felsökning → Återställ frontend-cache): *Phase Bus Card* syns i kortväljaren först efter en omladdning."
+      "default": "Mätarsäkringen är inlagd. Lägg sedan till dina laster med **Lägg till last** på Phase Map-posten.\n\nFör att använda kortet på instrumentpanelen, **ladda om webbläsaren** först (Ctrl+Shift+R, eller i appen Inställningar → Companion-app → Felsökning → Återställ frontend-cache): *Phase Bus Card* syns i kortväljaren först efter en omladdning."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "Alternativ",
-        "description": "Inställningar, och mätare som HA Phase Map har hittat men som inte är tillagda.",
+        "description": "Inställningar, och mätare som Phase Map har hittat men som inte är tillagda.",
         "menu_options": {
           "settings": "Inställningar",
           "energy_seed": "Föreslå mätare från Energipanelen",
@@ -92,16 +92,16 @@
         }
       },
       "disable_labels": {
-        "title": "Etiketter satta av HA Phase Map",
-        "description": "HA Phase Map har satt {labels} fasetiketter på {devices} enheter. Ta bort dem eller behålla dem? Etiketter du själv har satt rörs aldrig.",
+        "title": "Etiketter satta av Phase Map",
+        "description": "Phase Map har satt {labels} fasetiketter på {devices} enheter. Ta bort dem eller behålla dem? Etiketter du själv har satt rörs aldrig.",
         "menu_options": {
           "remove_labels": "Ta bort dem",
-          "keep_labels": "Behåll dem (HA Phase Map slutar hantera dem)"
+          "keep_labels": "Behåll dem (Phase Map slutar hantera dem)"
         }
       },
       "energy_seed": {
         "title": "Föreslå mätare från Energipanelen",
-        "description": "Enheterna under *Enskilda enheter* i Energipanelen är mätare du redan har valt ut. HA Phase Map räknar ut fasen för dem som inte är tillagda (och mätaren de sitter bakom, från *uppströms enhet*) och föreslår dem under **Inställningar → Reparationer** inom en minut. Det fungerar även när *Leta efter nya mätare* är avstängt."
+        "description": "Enheterna under *Enskilda enheter* i Energipanelen är mätare du redan har valt ut. Phase Map räknar ut fasen för dem som inte är tillagda (och mätaren de sitter bakom, från *uppströms enhet*) och föreslår dem under **Inställningar → Reparationer** inom en minut. Det fungerar även när *Leta efter nya mätare* är avstängt."
       },
       "suggestions": {
         "title": "Föreslagna mätare",
@@ -124,7 +124,7 @@
       "same_value_twice": "Använd olika etikettvärden för faserna."
     },
     "abort": {
-      "not_loaded": "HA Phase Map körs inte; försök igen när integrationen är laddad."
+      "not_loaded": "Phase Map körs inte; försök igen när integrationen är laddad."
     }
   },
   "selector": {
@@ -183,7 +183,7 @@
             "draw": "Effekten räknas"
           },
           "data_description": {
-            "portable": "För något som flyttas mellan uttag (ett element, en vattenkokare). HA Phase Map följer när den slås på och av; visar det tydligt en annan fas flyttas lasten dit automatiskt. Annars frågar den under Inställningar → Reparationer.",
+            "portable": "För något som flyttas mellan uttag (ett element, en vattenkokare). Phase Map följer när den slås på och av; visar det tydligt en annan fas flyttas lasten dit automatiskt. Annars frågar den under Inställningar → Reparationer.",
             "connected_phases": "Bara för en flerfaslast som mäts med en enda mätare, till exempel ett CEE-uttag eller en laddbox som mäts som totalt. Välj de andra faserna den är kopplad till: den ritas då som flerfaslast och kontrolleras inte för flyttar.",
             "draw": "Med mer än en fas: all mätarens effekt på fasen ovan (en enfasbil i en trefasladdbox), eller jämnt fördelad över de anslutna faserna."
           }
@@ -198,7 +198,7 @@
             "draw": "Effekten räknas"
           },
           "data_description": {
-            "portable": "För något som flyttas mellan uttag (ett element, en vattenkokare). HA Phase Map följer när den slås på och av; visar det tydligt en annan fas flyttas lasten dit automatiskt. Annars frågar den under Inställningar → Reparationer.",
+            "portable": "För något som flyttas mellan uttag (ett element, en vattenkokare). Phase Map följer när den slås på och av; visar det tydligt en annan fas flyttas lasten dit automatiskt. Annars frågar den under Inställningar → Reparationer.",
             "connected_phases": "Bara för en flerfaslast som mäts med en enda mätare, till exempel ett CEE-uttag eller en laddbox som mäts som totalt. Välj de andra faserna den är kopplad till: den ritas då som flerfaslast och kontrolleras inte för flyttar.",
             "draw": "Med mer än en fas: all mätarens effekt på fasen ovan (en enfasbil i en trefasladdbox), eller jämnt fördelad över de anslutna faserna."
           }
@@ -229,7 +229,7 @@
             "portable": "Flyttbar: följ med när den flyttas till en annan fas"
           },
           "data_description": {
-            "portable": "För något som flyttas mellan uttag (ett element, en vattenkokare). HA Phase Map följer när den slås på och av; visar det tydligt en annan fas flyttas lasten dit automatiskt. Annars frågar den under Inställningar → Reparationer."
+            "portable": "För något som flyttas mellan uttag (ett element, en vattenkokare). Phase Map följer när den slås på och av; visar det tydligt en annan fas flyttas lasten dit automatiskt. Annars frågar den under Inställningar → Reparationer."
           }
         },
         "parent": {
@@ -254,7 +254,7 @@
           "data_description": {
             "connected_phases": "Bara för en flerfaslast som mäts med en enda mätare, till exempel ett CEE-uttag eller en laddbox som mäts som totalt. Välj de andra faserna den är kopplad till: den ritas då som flerfaslast och kontrolleras inte för flyttar.",
             "draw": "Med mer än en fas: all mätarens effekt på fasen ovan (en enfasbil i en trefasladdbox), eller jämnt fördelad över de anslutna faserna.",
-            "portable": "För något som flyttas mellan uttag (ett element, en vattenkokare). HA Phase Map följer när den slås på och av; visar det tydligt en annan fas flyttas lasten dit automatiskt. Annars frågar den under Inställningar → Reparationer."
+            "portable": "För något som flyttas mellan uttag (ett element, en vattenkokare). Phase Map följer när den slås på och av; visar det tydligt en annan fas flyttas lasten dit automatiskt. Annars frågar den under Inställningar → Reparationer."
           }
         }
       },

@@ -54,7 +54,7 @@ def ws_entries(hass: HomeAssistant, connection: websocket_api.ActiveConnection, 
 def ws_subscribe(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
     entry_id = msg["entry_id"]
     if _engine(hass, entry_id) is None:
-        connection.send_error(msg["id"], "not_found", "No loaded HA Phase Map entry with that id")
+        connection.send_error(msg["id"], "not_found", "No loaded Phase Map entry with that id")
         return
 
     @callback
@@ -79,7 +79,7 @@ def ws_subscribe(hass: HomeAssistant, connection: websocket_api.ActiveConnection
 async def ws_average(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
     engine = _engine(hass, msg["entry_id"])
     if engine is None:
-        connection.send_error(msg["id"], "not_found", "No loaded HA Phase Map entry with that id")
+        connection.send_error(msg["id"], "not_found", "No loaded Phase Map entry with that id")
         return
     units: dict[str, str | None] = {}
     for entity_id in engine.tracked_entities:
@@ -132,7 +132,7 @@ async def ws_average(hass: HomeAssistant, connection: websocket_api.ActiveConnec
 async def ws_suggest_phase(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
     engine = _engine(hass, msg["entry_id"])
     if engine is None:
-        connection.send_error(msg["id"], "not_found", "No loaded HA Phase Map entry with that id")
+        connection.send_error(msg["id"], "not_found", "No loaded Phase Map entry with that id")
         return
     result = await async_suggest_phase(hass, msg["entity_id"], engine.sources, engine.voltage, msg["days"])
     connection.send_result(msg["id"], result.as_dict())
@@ -144,7 +144,7 @@ def ws_discovery(hass: HomeAssistant, connection: websocket_api.ActiveConnection
     engine = _engine(hass, msg["entry_id"])
     manager = getattr(engine, "discovery", None) if engine else None
     if manager is None:
-        connection.send_error(msg["id"], "not_found", "No loaded HA Phase Map entry with that id")
+        connection.send_error(msg["id"], "not_found", "No loaded Phase Map entry with that id")
         return
     data = manager.as_dict()
     connection.send_result(msg["id"], {k: data[k] for k in ("enabled", "last_scan", "candidates", "ignored", "open")})

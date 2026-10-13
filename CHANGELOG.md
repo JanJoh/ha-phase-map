@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.2 (2026-10-13)
+
+- **Renamed to "Phase Map"** in Home Assistant (integrations list, devices, dialogs) and in HACS.
+  The domain (`phase_map`), entity ids and the repository stay the same, so nothing needs
+  setting up again.
+- Bundles phase-bus-card **0.8.1** (the same rename in its texts).
+
 ## 0.9.1 (2026-10-13)
 
 - **Detectors follow heaters that switch off a stage at a time.** A sauna heater dropped one

@@ -23,8 +23,8 @@ body:
   - type: input
     id: versions
     attributes:
-      label: HA Phase Map version (and card version if you installed it separately)
-      description: Settings → Devices & services → HA Phase Map shows the integration version.
+      label: Phase Map version (and card version if you installed it separately)
+      description: Settings → Devices & services → Phase Map shows the integration version.
       placeholder: "0.7.0"
     validations:
       required: true
@@ -41,7 +41,7 @@ body:
     attributes:
       label: Diagnostics
       description: >-
-        Settings → Devices & services → HA Phase Map → ⋮ → Download diagnostics, then drag the
+        Settings → Devices & services → Phase Map → ⋮ → Download diagnostics, then drag the
         file here. It has your configuration, the live values and the phase-check evidence.
   - type: textarea
     id: logs

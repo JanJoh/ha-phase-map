@@ -1,6 +1,6 @@
 {
   "domain": "phase_map",
-  "name": "HA Phase Map",
+  "name": "Phase Map",
   "after_dependencies": [
     "energy",
     "frontend",
@@ -19,5 +19,5 @@
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/JanJoh/ha-phase-map/issues",
   "requirements": [],
-  "version": "0.9.1"
+  "version": "0.9.2"
 }

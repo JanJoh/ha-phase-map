@@ -1,15 +1,15 @@
 /*
- * Phase Bus Card for HA Phase Map
+ * Phase Bus Card for Phase Map
  * https://github.com/JanJoh/ha-phase-map-card
  *
  * A single-line diagram: the main fuse, one bus per phase, every load branching off the
- * phase it is on, with live or average power. Needs the HA Phase Map integration
+ * phase it is on, with live or average power. Needs the Phase Map integration
  * (https://github.com/JanJoh/ha-phase-map).
  *
  * MIT License
  */
 
-const CARD_VERSION = "0.8.0";
+const CARD_VERSION = "0.8.1";
 
 const DEFAULT_COLORS = { L1: "#b8622a", L2: "#3a7fc1", L3: "#4f8f36" };
 const ESTIMATED_COLOR = "#8a5cc2";
@@ -152,7 +152,7 @@ class PhaseBusCard extends HTMLElement {
       running: sv ? "går" : "running",
       detected: sv ? "upptäckt" : "detected",
       detected_tip: sv ? "Ingen mätare: uppskattad av detektorn från omätt ström över det normala" : "No meter: estimated by the detector from unmetered current above normal",
-      no_entry: sv ? "Ingen HA Phase Map hittades. Lägg till integrationen först." : "No HA Phase Map found. Add the integration first.",
+      no_entry: sv ? "Ingen Phase Map hittades. Lägg till integrationen först." : "No Phase Map found. Add the integration first.",
       loading: sv ? "Laddar…" : "Loading…",
       days: sv ? "dagar" : "days",
       n_phase: sv ? "{n}-fas" : "{n}-phase",
@@ -488,7 +488,7 @@ class PhaseBusCardEditor extends HTMLElement {
     if (!this._form) {
       this._form = document.createElement("ha-form");
       this._form.computeLabel = (s) => ({
-        entry_id: "Main fuse (HA Phase Map entry)", mode: "Values", days: "Average over (days)", title: "Title",
+        entry_id: "Main fuse (Phase Map entry)", mode: "Values", days: "Average over (days)", title: "Title",
         colors: "Phase colours",
       }[s.name] || s.name);
       this._form.addEventListener("value-changed", (ev) => {
@@ -552,7 +552,7 @@ if (customElements.get("phase-bus-card")) {
   window.customCards.push({
     type: "phase-bus-card",
     name: "Phase Bus Card",
-    description: "Main fuse, one bus per phase, and every load on the phase it is connected to (HA Phase Map).",
+    description: "Main fuse, one bus per phase, and every load on the phase it is connected to (Phase Map).",
     preview: false,
     documentationURL: "https://github.com/JanJoh/ha-phase-map-card",
   });

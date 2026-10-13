@@ -357,7 +357,7 @@ class PhaseMapOptionsFlow(OptionsFlow):
         )
 
     async def async_step_disable_labels(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        """Turning labels off: remove the ones HA Phase Map added, or keep them?"""
+        """Turning labels off: remove the ones Phase Map added, or keep them?"""
         added, devices = await async_label_counts(self.hass, self.config_entry.entry_id)
         return self.async_show_menu(
             step_id="disable_labels",

@@ -109,7 +109,7 @@ async def async_sync_labels(hass: HomeAssistant, entry: ConfigEntry) -> None:
         if existing is not None:
             return existing.label_id
         created = labels.async_create(name, icon=LABEL_ICON, color=color.get(name),
-                                      description="Set by HA Phase Map: the phase this device is on.")
+                                      description="Set by Phase Map: the phase this device is on.")
         state["created"][created.label_id] = name
         return created.label_id
 

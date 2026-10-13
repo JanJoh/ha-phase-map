@@ -1,11 +1,11 @@
-# HA Phase Map
+# Phase Map
 
 **Know which load is on which phase of your main fuse, how much headroom each phase has, and
 when something without a meter (a sauna, a heater) is drawing power.**
 
 ![Phase bus card, light theme](docs/images/card-light.png)
 
-HA Phase Map is a Home Assistant custom integration. You tell it which sensors measure your
+Phase Map is a Home Assistant custom integration. You tell it which sensors measure your
 main fuse and add your power meters as loads on their phase, and it suggests the phase from
 history when you add a meter. It then gives you:
 
@@ -18,14 +18,14 @@ history when you add a meter. It then gives you:
   the phases you choose. A three-phase sauna is the classic case: use the detector to block a
   heat pump while the sauna runs, so the main fuse does not blow.
 - **A dashboard card** that draws it all as a single-line diagram. It comes with the
-  integration; its source is [HA Phase Map Card](https://github.com/JanJoh/ha-phase-map-card).
+  integration; its source is [Phase Map Card](https://github.com/JanJoh/ha-phase-map-card).
 
 Everything runs locally inside Home Assistant. There is no cloud service and no extra token.
 
 ## Before you start: you need a reliable meter on every phase
 
 > [!IMPORTANT]
-> HA Phase Map only makes sense if Home Assistant already has **trustworthy, frequently
+> Phase Map only makes sense if Home Assistant already has **trustworthy, frequently
 > updated current or power readings for each phase at the main fuse**. Without that, do not
 > install it: the numbers it produces will be wrong.
 
@@ -79,7 +79,7 @@ Through [HACS](https://hacs.xyz):
 
 1. **HACS → ⋮ → Custom repositories**, add `https://github.com/JanJoh/ha-phase-map` with type
    **Integration** (or use the button above).
-2. Download **HA Phase Map** and restart Home Assistant.
+2. Download **Phase Map** and restart Home Assistant.
 3. Add the integration (see [Setup](#setup)).
 4. **Reload the browser** (Ctrl+Shift+R; in the companion app: Settings → Companion app →
    Debugging → Reset frontend cache). The card is loaded when the page loads, so a page that
@@ -94,13 +94,13 @@ that resource; leaving it does no harm.)
 
 ## Setup
 
-**Settings → Devices & services → Add integration → HA Phase Map**
+**Settings → Devices & services → Add integration → Phase Map**
 
 1. **Main fuse**: name, number of phases, phase voltage (230 V in most of Europe, 120 V in
    North America) and fuse rating per phase.
 2. **Main fuse sensors**: the sensor for each phase.
 
-Then, on the HA Phase Map entry, add:
+Then, on the Phase Map entry, add:
 
 - **Load → One meter on one phase**: pick the meter. The integration looks at the last
   10 days and suggests the phase, for example *"Dishwasher is probably on L2 (high
@@ -125,7 +125,7 @@ Use **⋮ → Reconfigure** to change the fuse or its sensors. **Configure** has
 (overload warning margin and delay, phase labels, looking for new meters) and the suggested and
 ignored meters.
 
-### What HA Phase Map works out by itself, and what it doesn't
+### What Phase Map works out by itself, and what it doesn't
 
 - **New meters, if you turn it on:** it looks once a day for power and current sensors you
   have not added, works out their phase (and the meter they sit behind), and offers the clearest
@@ -145,7 +145,7 @@ ignored meters.
 
 ### Suggested meters
 
-HA Phase Map can look for meters you have not added yet and offer them, one repair at a time.
+Phase Map can look for meters you have not added yet and offer them, one repair at a time.
 It is **off by default**: turn it on under **Configure → Settings → Suggest new meters**.
 
 - **What it looks at:** sensors with device class *power* or *current*, state class
@@ -193,7 +193,7 @@ never switches (a UPS) cannot be placed from history.
 
 ### Phase labels on devices
 
-Under **Configure → Phase labels on devices**, HA Phase Map can put a label on the device of
+Under **Configure → Phase labels on devices**, Phase Map can put a label on the device of
 every load's meter that says which phase it is on, for example **Fas: 2**. You can then see and
 filter by phase anywhere labels are shown: device lists, entity tables, the automation editor.
 
@@ -204,11 +204,11 @@ filter by phase anywhere labels are shown: device lists, entity tables, the auto
   phase. Loads without a meter have no device and get no label.
 - Labels follow the configuration: when a load moves to another phase (also after a confirmed
   repair or for a portable load) or you change the name or values, the old label is replaced,
-  and labels HA Phase Map created are deleted once nothing uses them.
-- Only labels HA Phase Map added itself are ever removed. A label that was already on the
+  and labels Phase Map created are deleted once nothing uses them.
+- Only labels Phase Map added itself are ever removed. A label that was already on the
   device, even with the same name, is left alone.
 - Turning the option off asks whether to **remove** the labels it added or **keep** them (then
-  HA Phase Map stops managing them). Removing the integration leaves the labels in place, so
+  Phase Map stops managing them). Removing the integration leaves the labels in place, so
   turn the option off first if you want them gone.
 
 ### Multi-phase loads with one meter
@@ -216,7 +216,7 @@ filter by phase anywhere labels are shown: device lists, entity tables, the auto
 Phase suggestions and the phase check go by what the meter shows. A 3-phase charger with a car
 that only charges on one phase looks like a single-phase load on that phase. If the load is
 wired to more phases, say so: in the phase step (or when editing the load) pick **Also
-connected to** for the other phases. HA Phase Map then:
+connected to** for the other phases. Phase Map then:
 
 - draws it as a multi-phase load, whatever the history shows;
 - counts its power by **Power is counted**: **all on the phase above** (the 1-phase car on L1)
@@ -227,7 +227,7 @@ When the car changes, edit the load and switch between the two.
 
 ### Verified and unverified phases
 
-For every multi-phase load, HA Phase Map notes which phases it has actually been seen drawing
+For every multi-phase load, Phase Map notes which phases it has actually been seen drawing
 from, and the card draws the others **dashed**. With a meter per phase, a phase is verified once
 its meter has shown at least 0.1 A, live or in the last 30 days of history: a 3-phase charger
 that has only ever charged a 1-phase car is solid on L1 and dashed on L2 and L3 until a 3-phase
@@ -258,7 +258,7 @@ Use **⋮ → Reconfigure** on a load to move it behind another meter or back on
 ### When a load moves to another phase
 
 Plug the kettle into a socket on another phase and its power would be subtracted from the
-wrong phase. HA Phase Map checks every single-phase load continuously: each time it switches
+wrong phase. Phase Map checks every single-phase load continuously: each time it switches
 on or off (a step of at least 0.5 A), it looks at which phase of the main fuse, or of the
 meter it sits behind, moved by about the same amount within the next 10 seconds. Events where
 another meter moved at the same time are skipped.
@@ -344,7 +344,7 @@ The card uses these commands; other frontends can too.
 
 ## Known issues
 
-When something looks wrong, **Settings → Devices & services → HA Phase Map → ⋮ → Download
+When something looks wrong, **Settings → Devices & services → Phase Map → ⋮ → Download
 diagnostics** gives a file with your configuration, the live values and the evidence behind
 them; attach it to the issue. See [the issue tracker](https://github.com/JanJoh/ha-phase-map/issues) for known issues, and to
 report a problem or suggest something. Home Assistant links there too, from the integration's

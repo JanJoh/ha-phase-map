@@ -262,7 +262,7 @@ class PhaseMapEngine:
                          load.name, check.configured, check.suspected, votes, len(check.votes))
             self.hass.bus.async_fire("logbook_entry", {
                 "name": load.name, "domain": DOMAIN,
-                "message": f"moved from {check.configured} to {check.suspected}; HA Phase Map follows it",
+                "message": f"moved from {check.configured} to {check.suspected}; Phase Map follows it",
             })
             self.hass.async_create_task(async_move_load(self.hass, self.entry.entry_id, load.subentry_id,
                                                         check.suspected))

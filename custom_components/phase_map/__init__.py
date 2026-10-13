@@ -1,4 +1,4 @@
-"""HA Phase Map: which load is on which phase, headroom and unmetered load per phase."""
+"""Phase Map: which load is on which phase, headroom and unmetered load per phase."""
 
 from __future__ import annotations
 

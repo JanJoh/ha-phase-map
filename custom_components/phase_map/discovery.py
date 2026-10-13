@@ -1,6 +1,6 @@
 """Meter discovery: suggest power and current sensors that are not added as loads yet.
 
-Off by default. When it is on, HA Phase Map looks once a day for power/current sensors that
+Off by default. When it is on, Phase Map looks once a day for power/current sensors that
 no load uses, works out their phase (and the meter they sit behind) from the same 5-minute
 statistics the phase suggestion uses, and offers the clearest ones as repair issues, at most
 MAX_OPEN at a time. Nothing is ever added without the user confirming it.
@@ -151,7 +151,7 @@ def phase_tag(channel: str) -> str | None:
 
 
 def used_entities(hass: HomeAssistant) -> set[str]:
-    """Every entity any HA Phase Map load uses, in any entry, plus the main-fuse sources."""
+    """Every entity any Phase Map load uses, in any entry, plus the main-fuse sources."""
     used: set[str] = set()
     for entry in hass.config_entries.async_entries(DOMAIN):
         used.update(entry.data.get(CONF_SOURCES, {}).values())

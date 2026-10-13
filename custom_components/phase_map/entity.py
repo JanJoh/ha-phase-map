@@ -15,7 +15,7 @@ def fuse_device(engine: PhaseMapEngine) -> DeviceInfo:
     return DeviceInfo(
         identifiers={(DOMAIN, engine.entry.entry_id)},
         name=engine.entry.title,
-        manufacturer="HA Phase Map",
+        manufacturer="Phase Map",
         model=f"{len(engine.phases)} × {engine.fuse_a:g} A",
         entry_type=DeviceEntryType.SERVICE,
     )
@@ -26,7 +26,7 @@ def detector_device(engine: PhaseMapEngine, subentry_id: str, name: str) -> Devi
     return DeviceInfo(
         identifiers={(DOMAIN, subentry_id)},
         name=name,
-        manufacturer="HA Phase Map",
+        manufacturer="Phase Map",
         model="Unmetered load detector",
         entry_type=DeviceEntryType.SERVICE,
         via_device_id=engine.device_id,

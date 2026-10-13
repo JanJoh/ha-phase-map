@@ -36,14 +36,14 @@
       "reconfigure_successful": "The main fuse was updated."
     },
     "create_entry": {
-      "default": "The main fuse is set up. Next, add your loads with **Add load** on the HA Phase Map entry.\n\nTo use the dashboard card, **reload the browser** first (Ctrl+Shift+R, or in the companion app Settings → Companion app → Debugging → Reset frontend cache): *Phase Bus Card* only appears in the card picker after a reload."
+      "default": "The main fuse is set up. Next, add your loads with **Add load** on the Phase Map entry.\n\nTo use the dashboard card, **reload the browser** first (Ctrl+Shift+R, or in the companion app Settings → Companion app → Debugging → Reset frontend cache): *Phase Bus Card* only appears in the card picker after a reload."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "Options",
-        "description": "Settings, and the meters HA Phase Map has found but you have not added.",
+        "description": "Settings, and the meters Phase Map has found but you have not added.",
         "menu_options": {
           "settings": "Settings",
           "energy_seed": "Suggest meters from the Energy dashboard",
@@ -92,16 +92,16 @@
         }
       },
       "disable_labels": {
-        "title": "Labels set by HA Phase Map",
-        "description": "HA Phase Map has added {labels} phase labels to {devices} devices. Remove them, or keep them? Labels you set yourself are never touched.",
+        "title": "Labels set by Phase Map",
+        "description": "Phase Map has added {labels} phase labels to {devices} devices. Remove them, or keep them? Labels you set yourself are never touched.",
         "menu_options": {
           "remove_labels": "Remove them",
-          "keep_labels": "Keep them (HA Phase Map stops managing them)"
+          "keep_labels": "Keep them (Phase Map stops managing them)"
         }
       },
       "energy_seed": {
         "title": "Suggest meters from the Energy dashboard",
-        "description": "The devices listed under *Individual devices* in the Energy dashboard are meters you have already picked out. HA Phase Map works out the phase of those not added yet (and the meter they sit behind, from *upstream device*) and offers them under **Settings → Repairs** within a minute. This works also while *Look for new meters* is off."
+        "description": "The devices listed under *Individual devices* in the Energy dashboard are meters you have already picked out. Phase Map works out the phase of those not added yet (and the meter they sit behind, from *upstream device*) and offers them under **Settings → Repairs** within a minute. This works also while *Look for new meters* is off."
       },
       "suggestions": {
         "title": "Suggested meters",
@@ -124,7 +124,7 @@
       "same_value_twice": "Use a different label value for each phase."
     },
     "abort": {
-      "not_loaded": "HA Phase Map is not running; try again when the integration is loaded."
+      "not_loaded": "Phase Map is not running; try again when the integration is loaded."
     }
   },
   "selector": {
@@ -183,7 +183,7 @@
             "draw": "Power is counted"
           },
           "data_description": {
-            "portable": "For something that is moved between sockets (a space heater, a kettle). HA Phase Map watches its switch-on and switch-off events; when they clearly show another phase, it moves the load there by itself. Otherwise it asks under Settings → Repairs.",
+            "portable": "For something that is moved between sockets (a space heater, a kettle). Phase Map watches its switch-on and switch-off events; when they clearly show another phase, it moves the load there by itself. Otherwise it asks under Settings → Repairs.",
             "connected_phases": "Only for a multi-phase load measured by one meter, such as a CEE outlet or a charger measured as a total. Pick the other phases it is wired to: it is then drawn as a multi-phase load and not checked for moves.",
             "draw": "With more than one phase: all of the meter's power on the phase above (a 1-phase car on a 3-phase charger), or split equally over the connected phases."
           }
@@ -198,7 +198,7 @@
             "draw": "Power is counted"
           },
           "data_description": {
-            "portable": "For something that is moved between sockets (a space heater, a kettle). HA Phase Map watches its switch-on and switch-off events; when they clearly show another phase, it moves the load there by itself. Otherwise it asks under Settings → Repairs.",
+            "portable": "For something that is moved between sockets (a space heater, a kettle). Phase Map watches its switch-on and switch-off events; when they clearly show another phase, it moves the load there by itself. Otherwise it asks under Settings → Repairs.",
             "connected_phases": "Only for a multi-phase load measured by one meter, such as a CEE outlet or a charger measured as a total. Pick the other phases it is wired to: it is then drawn as a multi-phase load and not checked for moves.",
             "draw": "With more than one phase: all of the meter's power on the phase above (a 1-phase car on a 3-phase charger), or split equally over the connected phases."
           }
@@ -229,7 +229,7 @@
             "portable": "Portable: follow it when it moves to another phase"
           },
           "data_description": {
-            "portable": "For something that is moved between sockets (a space heater, a kettle). HA Phase Map watches its switch-on and switch-off events; when they clearly show another phase, it moves the load there by itself. Otherwise it asks under Settings → Repairs."
+            "portable": "For something that is moved between sockets (a space heater, a kettle). Phase Map watches its switch-on and switch-off events; when they clearly show another phase, it moves the load there by itself. Otherwise it asks under Settings → Repairs."
           }
         },
         "parent": {
@@ -254,7 +254,7 @@
           "data_description": {
             "connected_phases": "Only for a multi-phase load measured by one meter, such as a CEE outlet or a charger measured as a total. Pick the other phases it is wired to: it is then drawn as a multi-phase load and not checked for moves.",
             "draw": "With more than one phase: all of the meter's power on the phase above (a 1-phase car on a 3-phase charger), or split equally over the connected phases.",
-            "portable": "For something that is moved between sockets (a space heater, a kettle). HA Phase Map watches its switch-on and switch-off events; when they clearly show another phase, it moves the load there by itself. Otherwise it asks under Settings → Repairs."
+            "portable": "For something that is moved between sockets (a space heater, a kettle). Phase Map watches its switch-on and switch-off events; when they clearly show another phase, it moves the load there by itself. Otherwise it asks under Settings → Repairs."
           }
         }
       },
