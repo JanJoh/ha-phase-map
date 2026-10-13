@@ -104,6 +104,11 @@ async def test_detector_flow(hass: HomeAssistant, main_fuse_states) -> None:
     assert result["errors"] == {"detect_phases": "no_phase"}
     result = await hass.config_entries.subentries.async_configure(
         result["flow_id"], {"name": "Sauna", "detect_phases": ["L1", "L2", "L3"], "min_current_a": 6,
+                            "hold_current_a": 7, "on_delay_s": 60, "off_delay_s": 900}
+    )
+    assert result["errors"] == {"hold_current_a": "hold_above_min"}
+    result = await hass.config_entries.subentries.async_configure(
+        result["flow_id"], {"name": "Sauna", "detect_phases": ["L1", "L2", "L3"], "min_current_a": 6,
                             "on_delay_s": 60, "off_delay_s": 900}
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY

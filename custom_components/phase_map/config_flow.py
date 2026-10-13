@@ -28,6 +28,7 @@ from .const import (
     CONF_ESTIMATED_PHASES,
     CONF_ESTIMATED_W,
     CONF_FUSE_A,
+    CONF_HOLD_CURRENT_A,
     CONF_LABEL_NAME,
     CONF_LABELS,
     CONF_MARGIN_A,
@@ -754,13 +755,19 @@ class DetectorSubentryFlow(ConfigSubentryFlow):
                 vol.Required(CONF_NAME): selector.TextSelector(),
                 vol.Required(CONF_DETECT_PHASES, default=list(phases)): _phase_select(phases, True),
                 vol.Required(CONF_MIN_CURRENT_A, default=DEFAULT_MIN_CURRENT_A): _number(0.5, 100, 0.5, "A"),
+                vol.Optional(CONF_HOLD_CURRENT_A): _number(0.5, 100, 0.5, "A"),
                 vol.Required(CONF_ON_DELAY, default=DEFAULT_ON_DELAY): _number(0, 3600, 5, "s"),
                 vol.Required(CONF_OFF_DELAY, default=DEFAULT_OFF_DELAY): _number(0, 7200, 30, "s"),
             }
         )
 
     def _validate(self, user_input: dict[str, Any]) -> dict[str, str]:
-        return {CONF_DETECT_PHASES: "no_phase"} if not user_input.get(CONF_DETECT_PHASES) else {}
+        if not user_input.get(CONF_DETECT_PHASES):
+            return {CONF_DETECT_PHASES: "no_phase"}
+        hold = user_input.get(CONF_HOLD_CURRENT_A)
+        if hold is not None and hold > user_input.get(CONF_MIN_CURRENT_A, DEFAULT_MIN_CURRENT_A):
+            return {CONF_HOLD_CURRENT_A: "hold_above_min"}
+        return {}
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
         errors: dict[str, str] = {}

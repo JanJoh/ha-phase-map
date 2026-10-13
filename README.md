@@ -115,7 +115,11 @@ Then, on the HA Phase Map entry, add:
 - **Measured by** (asked after the details when you have other meters): if the load sits
   behind another meter you have added, pick that meter. See below.
 - **Detector**: phases, minimum extra current per phase (an 8 kW three-phase sauna adds about
-  11 A per phase), and delays. The off-delay keeps it on while a thermostat cycles.
+  11 A per phase), and delays. It turns on when **every** phase rises by the minimum. Once on
+  (and while it waits out the on-delay) it stays on as long as **all phases but one** are above
+  the *keep on* level (default two thirds of the minimum): many sauna heaters drop one phase
+  first when they get close to the set temperature, and a glitch on a single phase should not
+  count. The off-delay keeps it on while the thermostat cycles.
 
 Use **⋮ → Reconfigure** to change the fuse or its sensors. **Configure** has the settings
 (overload warning margin and delay, phase labels, looking for new meters) and the suggested and

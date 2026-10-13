@@ -283,11 +283,13 @@
             "detect_phases": "Faser",
             "min_current_a": "Minsta extra ström per fas",
             "on_delay_s": "Slå till efter",
-            "off_delay_s": "Slå från efter"
+            "off_delay_s": "Slå från efter",
+            "hold_current_a": "Håll på så länge faserna ligger över"
           },
           "data_description": {
             "min_current_a": "Omätt ström över dess normala nivå som räknas som att lasten går. Ett trefasigt bastuaggregat på 8 kW ger ungefär 11 A per fas.",
-            "off_delay_s": "Håll detektorn på så här länge efter att strömmen sjunkit, så att en termostat som slår av och på inte får den att fladdra."
+            "off_delay_s": "Håll detektorn på så här länge efter att strömmen sjunkit, så att en termostat som slår av och på inte får den att fladdra.",
+            "hold_current_a": "Medan lasten går förblir detektorn på så länge alla dess faser utom en ligger minst så här mycket över det normala, så att ett aggregat som stänger av ett steg i taget inte tappas bort. Tomt: två tredjedelar av minimum."
           }
         },
         "reconfigure": {
@@ -297,12 +299,17 @@
             "detect_phases": "Faser",
             "min_current_a": "Minsta extra ström per fas",
             "on_delay_s": "Slå till efter",
-            "off_delay_s": "Slå från efter"
+            "off_delay_s": "Slå från efter",
+            "hold_current_a": "Håll på så länge faserna ligger över"
+          },
+          "data_description": {
+            "hold_current_a": "Medan lasten går förblir detektorn på så länge alla dess faser utom en ligger minst så här mycket över det normala, så att ett aggregat som stänger av ett steg i taget inte tappas bort. Tomt: två tredjedelar av minimum."
           }
         }
       },
       "error": {
-        "no_phase": "Välj minst en fas."
+        "no_phase": "Välj minst en fas.",
+        "hold_above_min": "Får inte vara högre än minsta extra ström."
       },
       "abort": {
         "reconfigure_successful": "Detektorn uppdaterades."

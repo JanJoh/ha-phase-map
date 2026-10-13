@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.9.1 (2026-10-13)
+
+- **Detectors follow heaters that switch off a stage at a time.** A sauna heater dropped one
+  phase when it got close to its set temperature and kept heating on the other two; the
+  detector needed all three phases and switched off while the sauna was still on. Now a
+  detector turns on when every phase rises by the minimum, and stays on while all phases but
+  one are above a lower *keep on* level (new, optional; default two thirds of the minimum).
+  A glitch on a single phase still neither keeps it on nor starts it.
+- **A one-phase glitch no longer restarts the on-delay.** Meters that update out of step can
+  make one phase dip for a few seconds; while the detector waits out its on-delay, the keep-on
+  level applies too.
+- **The power sensor counts the stage that is left**: each phase's current above normal (from
+  1 A) while the detector is on, instead of 0 W unless every phase was above the minimum.
+
 ## 0.9.0 (2026-10-13)
 
 - **Power and energy for detected loads.** Every detector's device now has a power sensor

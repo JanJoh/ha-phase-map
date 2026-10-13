@@ -283,11 +283,13 @@
             "detect_phases": "Phases",
             "min_current_a": "Minimum extra current per phase",
             "on_delay_s": "Turn on after",
-            "off_delay_s": "Turn off after"
+            "off_delay_s": "Turn off after",
+            "hold_current_a": "Keep on while the phases are above"
           },
           "data_description": {
             "min_current_a": "Unmetered current above its normal level that counts as the load running. An 8 kW three-phase sauna adds about 11 A per phase.",
-            "off_delay_s": "Keep the detector on this long after the current drops, so a thermostat switching on and off does not make it flicker."
+            "off_delay_s": "Keep the detector on this long after the current drops, so a thermostat switching on and off does not make it flicker.",
+            "hold_current_a": "While the load runs, the detector stays on as long as all its phases but one are at least this far above normal, so a heater that switches off one stage at a time is not lost. Empty: two thirds of the minimum."
           }
         },
         "reconfigure": {
@@ -297,12 +299,17 @@
             "detect_phases": "Phases",
             "min_current_a": "Minimum extra current per phase",
             "on_delay_s": "Turn on after",
-            "off_delay_s": "Turn off after"
+            "off_delay_s": "Turn off after",
+            "hold_current_a": "Keep on while the phases are above"
+          },
+          "data_description": {
+            "hold_current_a": "While the load runs, the detector stays on as long as all its phases but one are at least this far above normal, so a heater that switches off one stage at a time is not lost. Empty: two thirds of the minimum."
           }
         }
       },
       "error": {
-        "no_phase": "Pick at least one phase."
+        "no_phase": "Pick at least one phase.",
+        "hold_above_min": "Must not be higher than the minimum extra current."
       },
       "abort": {
         "reconfigure_successful": "The detector was updated."

@@ -71,6 +71,11 @@ class Debounced:
 
         self._cancel = async_call_later(self.hass, delay, _fire)
 
+    @property
+    def turning_on(self) -> bool:
+        """Waiting out the on-delay."""
+        return self._pending is True
+
     @callback
     def _apply(self, value: bool) -> None:
         self._cancel = None
@@ -125,7 +130,7 @@ class OverloadSensor(PhaseMapEntity, BinarySensorEntity):
 
 
 class DetectorSensor(PhaseMapEntity, BinarySensorEntity):
-    """On while unmetered current on all its phases is at least `min_current` above normal."""
+    """On once unmetered current on all its phases is `min_current` above normal; stays on while all but one are `hold_current` above."""
 
     _attr_device_class = BinarySensorDeviceClass.RUNNING
     _attr_translation_key = "detector"
@@ -164,7 +169,10 @@ class DetectorSensor(PhaseMapEntity, BinarySensorEntity):
     @callback
     def _handle_update(self) -> None:
         reading = self.engine.detector_reading(self._subentry_id)
-        self._state.feed(bool(reading and reading["heating"]))
+        # Recognised by all phases rising together; kept on (and kept waiting out the on-delay)
+        # while all phases but one still carry a stage, so a meter glitch on one phase does not restart it
+        holding = self._state.is_on or self._state.turning_on
+        self._state.feed(bool(reading and reading["hold" if holding else "start"]))
         self._publish()
         self.async_write_ha_state()
 
@@ -177,6 +185,7 @@ class DetectorSensor(PhaseMapEntity, BinarySensorEntity):
         return {
             "phases": self._phases,
             "min_current": self._min,
+            "hold_current": self.engine.detector_cfg.get(self._subentry_id, {}).get("hold"),
             "unmetered_above_normal": {p: None if (e := self.engine.excess(p)) is None else round(e, 2)
                                        for p in self._phases},
             "typical_unmetered": {p: round(self.engine.baseline.get(p, 0.0), 2) for p in self._phases},

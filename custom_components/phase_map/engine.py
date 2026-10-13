@@ -32,6 +32,7 @@ from .const import (
     CONF_ESTIMATED_PHASES,
     CONF_ESTIMATED_W,
     CONF_FUSE_A,
+    CONF_HOLD_CURRENT_A,
     CONF_MARGIN_A,
     CONF_METER,
     CONF_MIN_CURRENT_A,
@@ -43,8 +44,10 @@ from .const import (
     CONF_VOLTAGE,
     DEFAULT_MARGIN_A,
     DEFAULT_MIN_CURRENT_A,
+    DETECTOR_NOISE_A,
     DOMAIN,
     DRAW_EQUAL,
+    HOLD_SHARE,
     SIGNAL_UPDATE,
     SUBENTRY_DETECTOR,
     SUBENTRY_LOAD,
@@ -164,14 +167,18 @@ class PhaseMapEngine:
         ]
         self.parents: dict[str, str | None] = effective_parents(self.loads)
         self.detector_ids = [s.subentry_id for s in entry.subentries.values() if s.subentry_type == SUBENTRY_DETECTOR]
-        # What each detector watches: {subentry_id: {"phases": [...], "min": amps}}
-        self.detector_cfg: dict[str, dict[str, Any]] = {
-            s.subentry_id: {
+        # What each detector watches: {subentry_id: {"phases": [...], "min": amps, "hold": amps}}
+        self.detector_cfg: dict[str, dict[str, Any]] = {}
+        for s in entry.subentries.values():
+            if s.subentry_type != SUBENTRY_DETECTOR:
+                continue
+            start = float(s.data.get(CONF_MIN_CURRENT_A, DEFAULT_MIN_CURRENT_A))
+            hold = s.data.get(CONF_HOLD_CURRENT_A)
+            self.detector_cfg[s.subentry_id] = {
                 "phases": [p for p in s.data.get(CONF_DETECT_PHASES, self.phases) if p in self.phases],
-                "min": float(s.data.get(CONF_MIN_CURRENT_A, DEFAULT_MIN_CURRENT_A)),
+                "min": start,
+                "hold": float(hold) if hold is not None else round(start * HOLD_SHARE, 2),
             }
-            for s in entry.subentries.values() if s.subentry_type == SUBENTRY_DETECTOR
-        }
         self.snapshot: dict[str, Any] = {}
         self._history: dict[str, deque[float]] = {p: deque(maxlen=BASELINE_WINDOW) for p in self.phases}
         self.baseline: dict[str, float] = {p: 0.0 for p in self.phases}
@@ -533,12 +540,16 @@ class PhaseMapEngine:
         self.notify()
 
     def detector_reading(self, subentry_id: str) -> dict[str, Any] | None:
-        """What a detector sees now: whether its load is drawing, and how much per phase.
+        """What a detector sees now, before its on/off delays, and what its load draws.
 
-        `heating` is the raw condition (every phase at least `min` above normal), before the
-        on/off delays. `a` is the current above normal per phase while the detector is on and
-        the condition holds, otherwise 0: when a thermostat pauses the heater the detector stays
-        on, but the load draws nothing. None while a phase has no reading.
+        `start`: every phase is at least `min` above normal (how the load is recognised).
+        `hold`: all phases but one are still at least `hold` above normal (the one phase for a
+        one-phase detector). A heater whose thermostat switches off one stage at a time (a sauna
+        dropping to two phases) keeps the detector on, but a glitch on a single phase (meters
+        updating out of step) does not.
+        `a`: while the detector is on, the current above normal on each phase that carries
+        some (from DETECTOR_NOISE_A), otherwise 0. When the thermostat pauses the heater the
+        detector stays on, but the load draws nothing. None while a phase has no reading.
         """
         cfg = self.detector_cfg.get(subentry_id)
         if not cfg or not cfg["phases"]:
@@ -546,11 +557,12 @@ class PhaseMapEngine:
         excess = {p: self.excess(p) for p in cfg["phases"]}
         if any(e is None for e in excess.values()):
             return None
-        heating = all(e >= cfg["min"] for e in excess.values())
         on = bool(self.detectors.get(subentry_id, {}).get("on"))
-        amps = {p: (round(max(e, 0.0), 2) if on and heating else 0.0) for p, e in excess.items()}
+        amps = {p: (round(e, 2) if on and e >= DETECTOR_NOISE_A else 0.0) for p, e in excess.items()}
         return {
-            "heating": heating,
+            "start": all(e >= cfg["min"] for e in excess.values()),
+            "hold": sum(e >= cfg["hold"] for e in excess.values()) >= max(1, len(excess) - 1),
+            "heating": any(amps.values()),
             "on": on,
             "a": amps,
             "w": {p: round(a * self.voltage) for p, a in amps.items()},

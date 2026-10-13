@@ -41,7 +41,8 @@ DRAW_EQUAL = "equal"
 
 # Detector subentry
 CONF_DETECT_PHASES = "detect_phases"
-CONF_MIN_CURRENT_A = "min_current_a"
+CONF_MIN_CURRENT_A = "min_current_a"   # every phase this far above normal: the load starts
+CONF_HOLD_CURRENT_A = "hold_current_a" # all phases but one this far above normal: it still runs (a stage of it)
 CONF_ON_DELAY = "on_delay_s"
 CONF_OFF_DELAY = "off_delay_s"
 
@@ -50,6 +51,8 @@ DEFAULT_FUSE_A = 20
 DEFAULT_MARGIN_A = 1.0
 DEFAULT_OVERLOAD_DELAY = 60
 DEFAULT_MIN_CURRENT_A = 6.0
+HOLD_SHARE = 2 / 3                # hold level when none is set: two thirds of the start level
+DETECTOR_NOISE_A = 1.0            # while on, a phase counts towards the power from this much above normal
 DEFAULT_ON_DELAY = 60
 DEFAULT_OFF_DELAY = 900
 
