@@ -547,8 +547,8 @@ class PhaseMapEngine:
         one-phase detector). A heater whose thermostat switches off one stage at a time (a sauna
         dropping to two phases) keeps the detector on, but a glitch on a single phase (meters
         updating out of step) does not.
-        `a`: while the detector is on, the current above normal on each phase that carries
-        some (from DETECTOR_NOISE_A), otherwise 0. When the thermostat pauses the heater the
+        `a`: while the detector is on and a stage runs (`hold`), the current above normal on
+        each phase that carries some (from DETECTOR_NOISE_A), otherwise 0. When the thermostat pauses the heater the
         detector stays on, but the load draws nothing. None while a phase has no reading.
         """
         cfg = self.detector_cfg.get(subentry_id)
@@ -558,10 +558,13 @@ class PhaseMapEngine:
         if any(e is None for e in excess.values()):
             return None
         on = bool(self.detectors.get(subentry_id, {}).get("on"))
-        amps = {p: (round(e, 2) if on and e >= DETECTOR_NOISE_A else 0.0) for p, e in excess.items()}
+        hold = sum(e >= cfg["hold"] for e in excess.values()) >= max(1, len(excess) - 1)
+        # Only while a stage of the load is running: an unmetered kettle or air fryer on one
+        # phase after the session is not the sauna
+        amps = {p: (round(e, 2) if on and hold and e >= DETECTOR_NOISE_A else 0.0) for p, e in excess.items()}
         return {
             "start": all(e >= cfg["min"] for e in excess.values()),
-            "hold": sum(e >= cfg["hold"] for e in excess.values()) >= max(1, len(excess) - 1),
+            "hold": hold,
             "heating": any(amps.values()),
             "on": on,
             "a": amps,

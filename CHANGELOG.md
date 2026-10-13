@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.4 (2026-10-13)
+
+- **A load on one phase no longer keeps a detector on after the session.** An air fryer
+  without a meter on L2 plus a few seconds of meter glitch on L1 every few minutes counted as
+  "two phases still running" and restarted the off-delay each time, so the sauna detector
+  stayed on long after the sauna was off. The keep-on condition now has to last a minute
+  before it restarts the off-delay; a stage that really runs lasts much longer than that.
+- **The power sensor ignores such loads:** it counts only while a stage of the detected load
+  runs (all phases but one above the keep-on level), so the air fryer is not reported as sauna.
+
 ## 0.9.3 (2026-10-13)
 
 - **Detectors keep their state across a restart or reload.** Before, a detector always started

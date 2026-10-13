@@ -325,3 +325,49 @@ async def test_detector_restored_on_turns_off_when_nothing_runs(hass: HomeAssist
     async_fire_time_changed(hass)
     await hass.async_block_till_done()
     assert hass.states.get("binary_sensor.sauna_running").state == "off"
+
+
+async def test_one_phase_load_plus_glitches_does_not_hold_it_on(hass: HomeAssistant, main_fuse_states,
+                                                                 freezer) -> None:
+    """After the sauna: an air fryer on L2 (no meter) plus short spikes on L1 let the detector go off."""
+    _normal(await _setup(hass))
+    det, power = "binary_sensor.sauna_running", "sensor.sauna_running_power"
+    await _sauna_on(hass, freezer)
+    for entity, value in (("sensor.main_l1", 3.0), ("sensor.main_l2", 19.2), ("sensor.main_l3", 2.0)):
+        set_amps(hass, entity, value)                 # sauna off, air fryer +7.2 A on L2
+    await hass.async_block_till_done()
+    assert hass.states.get(power).state == "0"        # the air fryer is not the sauna
+    for _ in range(3):                                # a 15 s spike on L1 every 2 minutes
+        set_amps(hass, "sensor.main_l1", 9.0)
+        await hass.async_block_till_done()
+        freezer.tick(timedelta(seconds=15))
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done()
+        set_amps(hass, "sensor.main_l1", 3.0)
+        await hass.async_block_till_done()
+        freezer.tick(timedelta(seconds=105))
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done()
+    assert hass.states.get(det).state == "off"        # off-delay 300 s from the end of the session
+
+
+async def test_a_stage_that_lasts_still_keeps_it_on(hass: HomeAssistant, main_fuse_states, freezer) -> None:
+    """The keep-on condition counts once it has lasted a minute: a heater back on stage 2 holds it on."""
+    _normal(await _setup(hass))
+    det = "binary_sensor.sauna_running"
+    await _sauna_on(hass, freezer)
+    await _normal_again(hass)                         # thermostat pause: the off-delay starts
+    freezer.tick(timedelta(seconds=200))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    for entity, value in (("sensor.main_l2", 18.2), ("sensor.main_l3", 8.2)):
+        set_amps(hass, entity, value)                 # stage 2 back on
+    await hass.async_block_till_done()
+    for _ in range(4):
+        freezer.tick(timedelta(seconds=30))
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done()
+    freezer.tick(timedelta(seconds=600))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert hass.states.get(det).state == "on"

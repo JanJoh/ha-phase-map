@@ -53,6 +53,7 @@ DEFAULT_OVERLOAD_DELAY = 60
 DEFAULT_MIN_CURRENT_A = 6.0
 HOLD_SHARE = 2 / 3                # hold level when none is set: two thirds of the start level
 DETECTOR_NOISE_A = 1.0            # while on, a phase counts towards the power from this much above normal
+HOLD_CONFIRM_S = 60               # the keep-on condition must last this long to restart the off-delay
 DEFAULT_ON_DELAY = 60
 DEFAULT_OFF_DELAY = 900
 

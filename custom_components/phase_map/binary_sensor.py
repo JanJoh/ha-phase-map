@@ -9,6 +9,7 @@ from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.util import dt as dt_util
 
 from . import PhaseMapConfigEntry
 from .const import (
@@ -22,6 +23,7 @@ from .const import (
     DEFAULT_OFF_DELAY,
     DEFAULT_ON_DELAY,
     DEFAULT_OVERLOAD_DELAY,
+    HOLD_CONFIRM_S,
     SUBENTRY_DETECTOR,
 )
 from .engine import PhaseMapEngine
@@ -151,6 +153,8 @@ class DetectorSensor(PhaseMapEntity, BinarySensorEntity, RestoreEntity):
             float(data.get(CONF_OFF_DELAY, DEFAULT_OFF_DELAY)),
             self._changed,
         )
+        self._hold_since: float | None = None
+        self._recheck: CALLBACK_TYPE | None = None
 
     async def async_added_to_hass(self) -> None:
         # A restart or reload mid-session: carry on from "on" (the keep-on level and the
@@ -162,6 +166,8 @@ class DetectorSensor(PhaseMapEntity, BinarySensorEntity, RestoreEntity):
 
     async def async_will_remove_from_hass(self) -> None:
         self._state.stop()
+        if self._recheck:
+            self._recheck()
         self.engine.detectors.pop(self._subentry_id, None)
 
     @callback
@@ -178,12 +184,42 @@ class DetectorSensor(PhaseMapEntity, BinarySensorEntity, RestoreEntity):
     @callback
     def _handle_update(self) -> None:
         reading = self.engine.detector_reading(self._subentry_id)
-        # Recognised by all phases rising together; kept on (and kept waiting out the on-delay)
-        # while all phases but one still carry a stage, so a meter glitch on one phase does not restart it
-        holding = self._state.is_on or self._state.turning_on
-        self._state.feed(bool(reading and reading["hold" if holding else "start"]))
+        hold = bool(reading and reading["hold"])
+        now = dt_util.utcnow().timestamp()
+        if not hold:
+            self._hold_since = None
+        elif self._hold_since is None:
+            self._hold_since = now
+        if self._state.is_on:
+            # Kept on while all phases but one still carry a stage. It has to last a while to
+            # count: an unmetered load on one phase (an air fryer) plus a few seconds of meter
+            # glitch on another must not restart the off-delay again and again.
+            held_for = 0.0 if self._hold_since is None else now - self._hold_since
+            if hold and held_for < HOLD_CONFIRM_S:
+                self._schedule_recheck(HOLD_CONFIRM_S - held_for)
+            condition = hold and held_for >= HOLD_CONFIRM_S
+        elif self._state.turning_on:
+            # Waiting out the on-delay: a dip on one phase does not restart it
+            condition = hold
+        else:
+            # Recognised by all phases rising together
+            condition = bool(reading and reading["start"])
+        self._state.feed(condition)
         self._publish()
         self.async_write_ha_state()
+
+    @callback
+    def _schedule_recheck(self, delay: float) -> None:
+        """Look again when the keep-on condition has lasted long enough, even if no meter changes."""
+        if self._recheck:
+            return
+
+        @callback
+        def _again(_now) -> None:
+            self._recheck = None
+            self._handle_update()
+
+        self._recheck = async_call_later(self.hass, delay + 0.5, _again)
 
     @property
     def is_on(self) -> bool:
