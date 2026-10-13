@@ -8,6 +8,7 @@ from homeassistant.components.binary_sensor import BinarySensorDeviceClass, Bina
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.event import async_call_later
+from homeassistant.helpers.restore_state import RestoreEntity
 
 from . import PhaseMapConfigEntry
 from .const import (
@@ -129,7 +130,7 @@ class OverloadSensor(PhaseMapEntity, BinarySensorEntity):
                 "limit": self.engine.fuse_a - self.engine.margin_a}
 
 
-class DetectorSensor(PhaseMapEntity, BinarySensorEntity):
+class DetectorSensor(PhaseMapEntity, BinarySensorEntity, RestoreEntity):
     """On once unmetered current on all its phases is `min_current` above normal; stays on while all but one are `hold_current` above."""
 
     _attr_device_class = BinarySensorDeviceClass.RUNNING
@@ -150,6 +151,14 @@ class DetectorSensor(PhaseMapEntity, BinarySensorEntity):
             float(data.get(CONF_OFF_DELAY, DEFAULT_OFF_DELAY)),
             self._changed,
         )
+
+    async def async_added_to_hass(self) -> None:
+        # A restart or reload mid-session: carry on from "on" (the keep-on level and the
+        # off-delay decide from here) instead of starting from "off" and waiting for every
+        # phase to rise again, which a heater at part power never does.
+        if (last := await self.async_get_last_state()) is not None and last.state == "on":
+            self._state.is_on = True
+        await super().async_added_to_hass()
 
     async def async_will_remove_from_hass(self) -> None:
         self._state.stop()

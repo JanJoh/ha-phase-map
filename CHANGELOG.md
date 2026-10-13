@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.3 (2026-10-13)
+
+- **Detectors keep their state across a restart or reload.** Before, a detector always started
+  "off" and needed every phase to rise again; a sauna heater at part power (two phases) never
+  does, so automations saw the sauna as off until the thermostat brought back full power.
+
 ## 0.9.2 (2026-10-13)
 
 - **Renamed to "Phase Map"** in Home Assistant (integrations list, devices, dialogs) and in HACS.

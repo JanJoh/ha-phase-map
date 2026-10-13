@@ -3,8 +3,8 @@
 from datetime import timedelta
 
 from freezegun.api import FrozenDateTimeFactory
-from homeassistant.core import HomeAssistant
-from pytest_homeassistant_custom_component.common import async_fire_time_changed
+from homeassistant.core import HomeAssistant, State
+from pytest_homeassistant_custom_component.common import async_fire_time_changed, mock_restore_cache
 
 from .conftest import make_entry, set_amps
 
@@ -289,3 +289,39 @@ async def test_glitches_on_one_phase_do_not_keep_it_on(hass: HomeAssistant, main
         async_fire_time_changed(hass)
         await hass.async_block_till_done()
     assert hass.states.get(det).state == "off"      # off-delay 300 s from the end of the session
+
+
+async def test_detector_stays_on_across_a_restart(hass: HomeAssistant, main_fuse_states, freezer) -> None:
+    """A restart while the heater runs at part power (two phases) keeps the detector on."""
+    mock_restore_cache(hass, [State("binary_sensor.sauna_running", "on")])
+    for entity, value in (("sensor.main_l2", 18.2), ("sensor.main_l3", 8.2)):   # L2/L3 +6.2 A
+        set_amps(hass, entity, value)
+    entry = make_entry(hass)
+    await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    _normal(entry)
+    await _normal_again(hass)
+    for entity, value in (("sensor.main_l2", 18.2), ("sensor.main_l3", 8.2)):
+        set_amps(hass, entity, value)
+    await hass.async_block_till_done()
+    assert hass.states.get("binary_sensor.sauna_running").state == "on"
+    freezer.tick(timedelta(seconds=600))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert hass.states.get("binary_sensor.sauna_running").state == "on"
+    assert float(hass.states.get("sensor.sauna_running_power").state) == round(2 * 6.2 * 230)
+
+
+async def test_detector_restored_on_turns_off_when_nothing_runs(hass: HomeAssistant, main_fuse_states,
+                                                                freezer) -> None:
+    mock_restore_cache(hass, [State("binary_sensor.sauna_running", "on")])
+    entry = make_entry(hass)
+    await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    _normal(entry)
+    await _normal_again(hass)
+    assert hass.states.get("binary_sensor.sauna_running").state == "on"
+    freezer.tick(timedelta(seconds=301))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert hass.states.get("binary_sensor.sauna_running").state == "off"
