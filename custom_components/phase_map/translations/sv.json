@@ -316,6 +316,12 @@
       },
       "headroom": {
         "name": "{phase} marginal"
+      },
+      "detector_power": {
+        "name": "Effekt"
+      },
+      "detector_energy": {
+        "name": "Energi"
       }
     },
     "binary_sensor": {

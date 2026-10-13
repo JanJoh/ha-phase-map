@@ -27,12 +27,14 @@ from .const import (
     BASELINE_WINDOW,
     CONF_CHANNELS,
     CONF_CONNECTED,
+    CONF_DETECT_PHASES,
     CONF_DRAW,
     CONF_ESTIMATED_PHASES,
     CONF_ESTIMATED_W,
     CONF_FUSE_A,
     CONF_MARGIN_A,
     CONF_METER,
+    CONF_MIN_CURRENT_A,
     CONF_NAME,
     CONF_PARENT,
     CONF_PHASES,
@@ -40,6 +42,7 @@ from .const import (
     CONF_SOURCES,
     CONF_VOLTAGE,
     DEFAULT_MARGIN_A,
+    DEFAULT_MIN_CURRENT_A,
     DOMAIN,
     DRAW_EQUAL,
     SIGNAL_UPDATE,
@@ -161,6 +164,14 @@ class PhaseMapEngine:
         ]
         self.parents: dict[str, str | None] = effective_parents(self.loads)
         self.detector_ids = [s.subentry_id for s in entry.subentries.values() if s.subentry_type == SUBENTRY_DETECTOR]
+        # What each detector watches: {subentry_id: {"phases": [...], "min": amps}}
+        self.detector_cfg: dict[str, dict[str, Any]] = {
+            s.subentry_id: {
+                "phases": [p for p in s.data.get(CONF_DETECT_PHASES, self.phases) if p in self.phases],
+                "min": float(s.data.get(CONF_MIN_CURRENT_A, DEFAULT_MIN_CURRENT_A)),
+            }
+            for s in entry.subentries.values() if s.subentry_type == SUBENTRY_DETECTOR
+        }
         self.snapshot: dict[str, Any] = {}
         self._history: dict[str, deque[float]] = {p: deque(maxlen=BASELINE_WINDOW) for p in self.phases}
         self.baseline: dict[str, float] = {p: 0.0 for p in self.phases}
@@ -521,13 +532,41 @@ class PhaseMapEngine:
         }
         self.notify()
 
+    def detector_reading(self, subentry_id: str) -> dict[str, Any] | None:
+        """What a detector sees now: whether its load is drawing, and how much per phase.
+
+        `heating` is the raw condition (every phase at least `min` above normal), before the
+        on/off delays. `a` is the current above normal per phase while the detector is on and
+        the condition holds, otherwise 0: when a thermostat pauses the heater the detector stays
+        on, but the load draws nothing. None while a phase has no reading.
+        """
+        cfg = self.detector_cfg.get(subentry_id)
+        if not cfg or not cfg["phases"]:
+            return None
+        excess = {p: self.excess(p) for p in cfg["phases"]}
+        if any(e is None for e in excess.values()):
+            return None
+        heating = all(e >= cfg["min"] for e in excess.values())
+        on = bool(self.detectors.get(subentry_id, {}).get("on"))
+        amps = {p: (round(max(e, 0.0), 2) if on and heating else 0.0) for p, e in excess.items()}
+        return {
+            "heating": heating,
+            "on": on,
+            "a": amps,
+            "w": {p: round(a * self.voltage) for p, a in amps.items()},
+            "power_w": round(sum(amps.values()) * self.voltage),
+        }
+
     @callback
     def notify(self) -> None:
         async_dispatcher_send(self.hass, SIGNAL_UPDATE.format(self.entry.entry_id))
 
     def payload(self) -> dict[str, Any]:
         """Snapshot plus detector states, for the websocket API."""
-        return {**self.snapshot, "detectors": list(self.detectors.values())}
+        return {**self.snapshot, "detectors": [
+            {**d, **(self.detector_reading(d["id"]) or {"a": {}, "w": {}, "power_w": None})}
+            for d in self.detectors.values()
+        ]}
 
     def excess(self, phase: str) -> float | None:
         """Unmetered current above the learned quiet level."""

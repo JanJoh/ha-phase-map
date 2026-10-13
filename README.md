@@ -280,9 +280,14 @@ For a main fuse called *Main fuse* with phases L1–L3:
 | `sensor.main_fuse_l1_headroom` | Fuse rating minus main-fuse current (A) |
 | `binary_sensor.main_fuse_l1_overload_risk` | On when L1 stays within the warning margin of the fuse rating |
 | `binary_sensor.<detector name>` | On while the detector's load runs. Attributes: unmetered current above normal per phase |
+| `sensor.<detector name>_power` | What the detected load draws now, estimated (W): the unmetered current above normal on its phases, while the detector is on and every phase is above the minimum. 0 W when it is off, and when it is on but its load pauses (a sauna thermostat). Attributes: current per phase |
+| `sensor.<detector name>_energy` | That power added up over time (kWh, total increasing). Add it to the Energy dashboard as an individual device |
 
 The detector compares against the *typical* unmetered current per phase, which it learns
 continuously (20th percentile of the last 6 hours), so lighting and sockets do not trigger it.
+The power and energy are estimates: anything else unmetered that starts during a session is
+counted with it. On the card the detected load is a dashed box marked *detected*, and its
+current is taken out of *Unmetered*.
 
 ## Example: block the heat pump while the sauna runs
 

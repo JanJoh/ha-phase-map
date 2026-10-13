@@ -6,7 +6,6 @@ from collections.abc import Callable
 
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass, BinarySensorEntity
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
-from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.event import async_call_later
 
@@ -22,11 +21,10 @@ from .const import (
     DEFAULT_OFF_DELAY,
     DEFAULT_ON_DELAY,
     DEFAULT_OVERLOAD_DELAY,
-    DOMAIN,
     SUBENTRY_DETECTOR,
 )
 from .engine import PhaseMapEngine
-from .entity import PhaseMapEntity, fuse_device
+from .entity import PhaseMapEntity, detector_device, fuse_device
 
 
 async def async_setup_entry(
@@ -140,14 +138,7 @@ class DetectorSensor(PhaseMapEntity, BinarySensorEntity):
         self._phases = [p for p in data.get(CONF_DETECT_PHASES, engine.phases) if p in engine.phases]
         self._min = float(data.get(CONF_MIN_CURRENT_A, DEFAULT_MIN_CURRENT_A))
         self._attr_unique_id = f"{engine.entry.entry_id}_{subentry_id}_detector"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, subentry_id)},
-            name=self._name,
-            manufacturer="HA Phase Map",
-            model="Unmetered load detector",
-            entry_type=DeviceEntryType.SERVICE,
-            via_device_id=engine.device_id,
-        )
+        self._attr_device_info = detector_device(engine, subentry_id, self._name)
         self._state = Debounced(
             engine.hass,
             float(data.get(CONF_ON_DELAY, DEFAULT_ON_DELAY)),
@@ -172,8 +163,8 @@ class DetectorSensor(PhaseMapEntity, BinarySensorEntity):
 
     @callback
     def _handle_update(self) -> None:
-        excess = [self.engine.excess(p) for p in self._phases]
-        self._state.feed(bool(self._phases) and all(e is not None and e >= self._min for e in excess))
+        reading = self.engine.detector_reading(self._subentry_id)
+        self._state.feed(bool(reading and reading["heating"]))
         self._publish()
         self.async_write_ha_state()
 

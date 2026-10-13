@@ -21,6 +21,18 @@ def fuse_device(engine: PhaseMapEngine) -> DeviceInfo:
     )
 
 
+def detector_device(engine: PhaseMapEngine, subentry_id: str, name: str) -> DeviceInfo:
+    """The device of one unmetered-load detector (e.g. "Sauna"), under the fuse device."""
+    return DeviceInfo(
+        identifiers={(DOMAIN, subentry_id)},
+        name=name,
+        manufacturer="HA Phase Map",
+        model="Unmetered load detector",
+        entry_type=DeviceEntryType.SERVICE,
+        via_device_id=engine.device_id,
+    )
+
+
 class PhaseMapEntity(Entity):
     """Updates whenever the engine recomputes."""
 

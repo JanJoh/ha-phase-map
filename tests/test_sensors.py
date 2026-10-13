@@ -142,3 +142,64 @@ async def test_baseline_seeded_from_history_after_a_reload(hass: HomeAssistant, 
     baseline = entry.runtime_data.baseline
     assert calls and calls[0][1:] == (0.25, "5minute")     # the last 6 hours
     assert baseline == {"L1": 1.4, "L2": 0.8, "L3": 0.1}  # an hour of sauna at the end doesn't move it
+
+
+async def _sauna_on(hass, freezer) -> None:
+    # +14.5 / 14.5 / 13.5 A unmetered (the quiet level is still 0 in a fresh test)
+    for entity, value in (("sensor.main_l1", 14.5), ("sensor.main_l2", 23.5), ("sensor.main_l3", 13.5)):
+        set_amps(hass, entity, value)
+    await hass.async_block_till_done()
+    for _ in range(3):
+        freezer.tick(timedelta(seconds=30))
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done()
+
+
+async def test_detector_power(hass: HomeAssistant, main_fuse_states, freezer) -> None:
+    """The detected load's power: 0 while off, the current above normal while on, 0 while it pauses."""
+    await _setup(hass)
+    power = "sensor.sauna_running_power"
+    assert hass.states.get(power).state == "0"
+    assert hass.states.get(power).attributes["unit_of_measurement"] == "W"
+    set_amps(hass, "sensor.main_l1", 14.5)          # one phase is not the sauna
+    await hass.async_block_till_done()
+    assert hass.states.get(power).state == "0"
+    await _sauna_on(hass, freezer)
+    assert hass.states.get("binary_sensor.sauna_running").state == "on"
+    assert float(hass.states.get(power).state) == round((14.5 + 14.5 + 13.5) * 230)
+    assert hass.states.get(power).attributes["current"] == {"L1": 14.5, "L2": 14.5, "L3": 13.5}
+    # the thermostat pauses the heater: the detector stays on, the power drops to 0
+    for entity, value in (("sensor.main_l1", 3.0), ("sensor.main_l2", 12.0), ("sensor.main_l3", 2.0)):
+        set_amps(hass, entity, value)
+    await hass.async_block_till_done()
+    assert hass.states.get("binary_sensor.sauna_running").state == "on"
+    assert hass.states.get(power).state == "0"
+    hass.states.async_set("sensor.main_l3", "unavailable")
+    await hass.async_block_till_done()
+    assert hass.states.get(power).state == "unavailable"
+
+
+async def test_detector_energy(hass: HomeAssistant, main_fuse_states, freezer) -> None:
+    """Energy adds up the power over time, also while no meter changes."""
+    await _setup(hass)
+    energy = "sensor.sauna_running_energy"
+    assert hass.states.get(energy).attributes["unit_of_measurement"] == "kWh"
+    assert hass.states.get(energy).attributes["state_class"] == "total_increasing"
+    assert float(hass.states.get(energy).state) == 0
+    await _sauna_on(hass, freezer)                  # on for the last 30 s of it
+    for _ in range(30):                             # half an hour, nothing changes
+        freezer.tick(timedelta(seconds=60))
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done()
+    kw = (14.5 + 14.5 + 13.5) * 230 / 1000
+    assert abs(float(hass.states.get(energy).state) - kw * 30.5 / 60) < 0.01
+    # paused: nothing more is added
+    for entity, value in (("sensor.main_l1", 3.0), ("sensor.main_l2", 12.0), ("sensor.main_l3", 2.0)):
+        set_amps(hass, entity, value)
+    await hass.async_block_till_done()
+    paused = float(hass.states.get(energy).state)
+    for _ in range(3):
+        freezer.tick(timedelta(seconds=60))
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done()
+    assert float(hass.states.get(energy).state) == paused

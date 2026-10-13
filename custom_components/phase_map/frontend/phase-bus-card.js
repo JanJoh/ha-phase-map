@@ -9,7 +9,7 @@
  * MIT License
  */
 
-const CARD_VERSION = "0.7.0";
+const CARD_VERSION = "0.8.0";
 
 const DEFAULT_COLORS = { L1: "#b8622a", L2: "#3a7fc1", L3: "#4f8f36" };
 const ESTIMATED_COLOR = "#8a5cc2";
@@ -150,6 +150,8 @@ class PhaseBusCard extends HTMLElement {
       est: sv ? "uppsk." : "est.",
       not_running: sv ? "går inte" : "not running",
       running: sv ? "går" : "running",
+      detected: sv ? "upptäckt" : "detected",
+      detected_tip: sv ? "Ingen mätare: uppskattad av detektorn från omätt ström över det normala" : "No meter: estimated by the detector from unmetered current above normal",
       no_entry: sv ? "Ingen HA Phase Map hittades. Lägg till integrationen först." : "No HA Phase Map found. Add the integration first.",
       loading: sv ? "Laddar…" : "Loading…",
       days: sv ? "dagar" : "days",
@@ -190,12 +192,22 @@ class PhaseBusCard extends HTMLElement {
       const restW = (avgMode ? avgLoad[load.id]?.rest_w : load.rest_w) || {};
       items[load.id] = { ...load, perPhase, total, restW, children: [] };
     }
+    // Detectors are drawn as loads too, live only: what they see is current above normal that no
+    // meter accounts for, so it is taken out of "Unmetered" below
+    const detected = avgMode ? [] : (live.detectors || []).filter((d) => Array.isArray(d.phases) && d.phases.length);
+    for (const d of detected) {
+      const perPhase = {};
+      for (const p of d.phases) perPhase[p] = d.w?.[p] ?? null;
+      items[`det_${d.id}`] = { id: `det_${d.id}`, name: d.name, phases: d.phases, detected: true, on: !!d.on,
+        perPhase, total: d.power_w ?? null, restW: {}, children: [] };
+    }
     const roots = [];
     for (const load of live.loads) {
       const parent = load.parent && items[load.parent];
       if (parent) parent.children.push(items[load.id]);
       else roots.push(items[load.id]);
     }
+    roots.push(...detected.map((d) => items[`det_${d.id}`]));
     // One panel per distribution point: the main fuse, then every meter with meters behind it
     const panel = (members, o) => {
       const rows = Object.fromEntries(o.phases.map((p) => [p, []]));
@@ -216,6 +228,7 @@ class PhaseBusCard extends HTMLElement {
     for (const p of order) {
       const ph = live.phases[p];
       mainRest[p] = avgMode ? avg?.phases?.[p]?.unmetered_w : (ph.unmetered_a == null ? null : ph.unmetered_a * v);
+      for (const d of detected) if (mainRest[p] != null && d.w?.[p]) mainRest[p] -= d.w[p];
       if (avgMode) mainLabel[p] = `≈ ${fmtW(avg?.phases?.[p]?.total_w)} ${this._t("average")}`;
       else mainLabel[p] = ph.current_a == null ? "–" : `${ph.current_a.toFixed(1)} A ${this._t("of")} ${live.fuse_a} A`;
       warn[p] = !avgMode && ph.current_a != null && ph.current_a >= live.fuse_a - (live.margin_a ?? 1);
@@ -283,10 +296,10 @@ class PhaseBusCard extends HTMLElement {
       o.push(`<text class="ph-avg${P.warn[p] ? " warn" : ""}" x="162" y="${y - 12}">${esc(P.label[p] ?? "")}</text>`);
       P.rows[p].forEach((ld, j) => {
         const x = xs[p][j], cx = x + BW / 2, top = y + 34;
-        const est = ld.estimated;
-        o.push(`<line class="tap" x1="${cx}" y1="${y}" x2="${cx}" y2="${top}" style="stroke:${est ? ESTIMATED_COLOR : c}"/>`);
+        const est = ld.estimated, det = ld.detected;
+        o.push(`<line class="tap" x1="${cx}" y1="${y}" x2="${cx}" y2="${top}" style="stroke:${est || det ? ESTIMATED_COLOR : c}"/>`);
         o.push(`<circle cx="${cx}" cy="${y}" r="4" style="fill:${c}"/>`);
-        o.push(`<rect class="box${ld.rest ? " rest" : ""}${est ? " est" : ""}${ld.children?.length ? " feeds" : ""}" x="${x}" y="${top}" width="${BW}" height="${BH}" rx="6" style="stroke:${est ? ESTIMATED_COLOR : c}"/>`);
+        o.push(`<rect class="box${ld.rest ? " rest" : ""}${est || det ? " est" : ""}${ld.children?.length ? " feeds" : ""}" x="${x}" y="${top}" width="${BW}" height="${BH}" rx="6" style="stroke:${est || det ? ESTIMATED_COLOR : c}">${det ? `<title>${esc(this._t("detected_tip"))}</title>` : ""}</rect>`);
         const lines = splitName(ld.name);
         const ty = lines.length === 2 ? top + 17 : top + 24;
         lines.forEach((l, k) => o.push(`<text class="nm" x="${cx}" y="${ty + k * 13}" text-anchor="middle">${esc(l)}</text>`));
@@ -298,7 +311,7 @@ class PhaseBusCard extends HTMLElement {
     });
     P.multi.forEach((ld, n) => {
       const xc = centres[n];
-      const est = ld.estimated;
+      const est = ld.estimated, det = ld.detected;
       ld.phases.forEach((p) => {
         const k = P.phases.indexOf(p);
         if (k < 0) return;
@@ -310,25 +323,27 @@ class PhaseBusCard extends HTMLElement {
         }
         d += ` V${boxTop3}`;
         // A phase the load has never been seen drawing from is drawn dashed, with an open dot
-        const unv = !est && Array.isArray(ld.verified) && !ld.verified.includes(p);
+        const unv = !est && !det && Array.isArray(ld.verified) && !ld.verified.includes(p);
         const tip = unv ? `<title>${esc(this._t("unverified").replace("{p}", p))}</title>` : "";
-        o.push(`<path class="cond${est ? " est" : ""}${unv ? " unv" : ""}" d="${d}" style="stroke:${col(p)}">${tip}</path>`);
+        o.push(`<path class="cond${est || det ? " est" : ""}${unv ? " unv" : ""}" d="${d}" style="stroke:${col(p)}">${tip}</path>`);
         o.push(unv
           ? `<circle class="unv-dot" cx="${x}" cy="${busY[p]}" r="4" style="stroke:${col(p)}">${tip}</circle>`
           : `<circle cx="${x}" cy="${busY[p]}" r="5" style="fill:${col(p)}"/>`);
         // What this phase draws, at the junction in the phase colour (measured channels only:
         // a one-meter load's split is a rule, not a reading)
         const pw = ld.perPhase[p];
-        if (!est && !ld.meter && pw != null && Math.round(pw) >= 1) {
+        if (!est && !ld.meter && pw != null && Math.round(pw) >= 1) {   // a detector's share is its own reading
           o.push(`<text class="jw" x="${x + 7}" y="${busY[p] - 6}" style="fill:${col(p)}">${esc(fmtW(pw))}</text>`);
         }
       });
-      o.push(`<rect class="box tp${est ? " est" : ""}${ld.children?.length ? " feeds" : ""}" x="${xc - TP_W / 2}" y="${boxTop3}" width="${TP_W}" height="${TP_H}" rx="6"${est ? ` style="stroke:${ESTIMATED_COLOR}"` : ""}/>`);
+      o.push(`<rect class="box tp${est || det ? " est" : ""}${ld.children?.length ? " feeds" : ""}" x="${xc - TP_W / 2}" y="${boxTop3}" width="${TP_W}" height="${TP_H}" rx="6"${est || det ? ` style="stroke:${ESTIMATED_COLOR}"` : ""}>${det ? `<title>${esc(this._t("detected_tip"))}</title>` : ""}</rect>`);
       const txt = [];
-      splitName(ld.name).forEach((l) => txt.push(["nm t3" + (est ? " estc" : ""), l]));
+      splitName(ld.name).forEach((l) => txt.push(["nm t3" + (est || det ? " estc" : ""), l]));
       txt.push(["nm small", this._t("n_phase").replace("{n}", ld.phases.length)]);
       txt.push(["w" + (!est && !ld.total ? " zero" : ""), est ? `${this._t("est")} ${fmtW(ld.estimated_w, 1000)}` : fmtW(ld.total)]);
-      if (ld.meter) {
+      if (det) {
+        txt.push(["nm small", `${this._t("detected")} · ${this._t(ld.on ? "running" : "not_running")}`]);
+      } else if (ld.meter) {
         // one meter for several phases: say how it is counted, not a measured split
         const draw = ld.meter.draw;
         txt.push(["nm small", draw && draw !== "equal" ? this._t("one_meter_on").replace("{p}", draw) : this._t("split_equal")]);
@@ -397,7 +412,7 @@ class PhaseBusCard extends HTMLElement {
       if (!m || (m.avgMode && !m.avg)) {
         body = `<div class="msg">${esc(this._avgError || this._t("loading"))}</div>`;
       } else {
-        const dets = (m.live.detectors || []).map((d) =>
+        const dets = (m.avgMode ? (m.live.detectors || []) : []).map((d) =>
           `<span class="chip${d.on ? " on" : ""}">${esc(d.name)}: ${esc(d.on ? this._t("running") : this._t("not_running"))}</span>`).join("");
         const sub = m.avgMode ? this._t("average_days").replace("{d}", Number(this._config.days)) : this._t("live");
         body = `<div class="sub">${esc(sub)}</div><div class="diagram">${this._svg(m)}</div>${dets ? `<div class="chips">${dets}</div>` : ""}`;

@@ -316,6 +316,12 @@
       },
       "headroom": {
         "name": "{phase} headroom"
+      },
+      "detector_power": {
+        "name": "Power"
+      },
+      "detector_energy": {
+        "name": "Energy"
       }
     },
     "binary_sensor": {

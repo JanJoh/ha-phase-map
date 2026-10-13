@@ -34,6 +34,7 @@ async def test_entries_and_subscribe(hass: HomeAssistant, hass_ws_client, main_f
     assert names["Sauna"]["estimated"] is True and names["Sauna"]["estimated_w"] == 8000
     assert names["EV charger"]["phases"] == ["L1", "L2", "L3"]
     assert payload["detectors"][0]["name"] == "Sauna running"
+    assert payload["detectors"][0]["power_w"] == 0 and payload["detectors"][0]["w"] == {"L1": 0, "L2": 0, "L3": 0}
 
     set_amps(hass, "sensor.main_l2", 13.0)
     msg = await client.receive_json()

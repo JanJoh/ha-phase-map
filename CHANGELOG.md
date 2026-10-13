@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.0 (2026-10-13)
+
+- **Power and energy for detected loads.** Every detector's device now has a power sensor
+  (what the load draws now, estimated from unmetered current above normal) and an energy sensor
+  (kWh, for the Energy dashboard). The power is 0 W while the detector is off, and while it is
+  on but the load pauses, so a sauna's thermostat cycles show up.
+- Bundles phase-bus-card **0.8.0**: detectors are drawn as loads on the phases they watch (a
+  dashed box marked *detected*, with the reading per phase at the junctions), and what they see
+  is taken out of *Unmetered*. In average mode they stay chips under the diagram.
+- The websocket payload's `detectors` carry `a`, `w` (per phase), `power_w` and `heating`.
+
 ## 0.8.1 (2026-10-13)
 
 - **Detectors survive a restart mid-session.** The quiet level of unmetered current that a
