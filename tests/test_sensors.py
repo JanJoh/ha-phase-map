@@ -101,3 +101,44 @@ async def test_reload_on_new_subentry(hass: HomeAssistant, main_fuse_states) -> 
     assert hass.config_entries.async_remove_subentry(entry, "sub_oven")
     await hass.async_block_till_done()
     assert len(entry.runtime_data.loads) == 3
+
+
+async def test_long_session_is_not_learned(hass: HomeAssistant, main_fuse_states, freezer) -> None:
+    """While the detector is on, the quiet level stays where it was (a 2-hour sauna stays a sauna)."""
+    entry = await _setup(hass)
+    engine = entry.runtime_data
+    for entity, value in (("sensor.main_l1", 14.5), ("sensor.main_l2", 23.5), ("sensor.main_l3", 13.5)):
+        set_amps(hass, entity, value)
+    await hass.async_block_till_done()
+    for _ in range(3):   # on after the on-delay
+        freezer.tick(timedelta(seconds=30))
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done()
+    assert hass.states.get("binary_sensor.sauna_running").state == "on"
+    before = dict(engine.baseline)
+    for _ in range(120):   # two hours of one-minute samples
+        freezer.tick(timedelta(seconds=60))
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done()
+    assert engine.baseline == before
+    assert hass.states.get("binary_sensor.sauna_running").state == "on"
+
+
+async def test_baseline_seeded_from_history_after_a_reload(hass: HomeAssistant, main_fuse_states,
+                                                           monkeypatch) -> None:
+    """A reload while the sauna runs starts from the recorded quiet level, not from zero."""
+    entry = await _setup(hass)     # creates the unmetered sensors (and their registry entries)
+    history = {f"sensor.main_fuse_{p.lower()}_unmetered_current": {float(i * 300): v for i, v in enumerate(vals)}
+               for p, vals in (("L1", [1.4] * 60 + [11.0] * 12), ("L2", [0.8] * 72), ("L3", [0.1] * 72))}
+    calls = []
+
+    async def fetch(hass_, units, voltage, days, period, key="mean"):
+        calls.append((sorted(units), round(days, 3), period))
+        return {e: history.get(e, {}) for e in units}
+
+    monkeypatch.setattr("custom_components.phase_map.engine.async_fetch_means", fetch)
+    await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    baseline = entry.runtime_data.baseline
+    assert calls and calls[0][1:] == (0.25, "5minute")     # the last 6 hours
+    assert baseline == {"L1": 1.4, "L2": 0.8, "L3": 0.1}  # an hour of sauna at the end doesn't move it

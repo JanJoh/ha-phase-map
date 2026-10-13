@@ -16,7 +16,7 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN, UnitOfElectricCurrent, UnitOfPower
 from homeassistant.core import Event, EventStateChangedData, HomeAssistant, State, callback
-from homeassistant.helpers import issue_registry as ir
+from homeassistant.helpers import entity_registry as er, issue_registry as ir
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_call_later, async_track_state_change_event, async_track_time_interval
 from homeassistant.util import dt as dt_util
@@ -175,6 +175,7 @@ class PhaseMapEngine:
         }
         self._verify_hits: dict[str, dict[str, int]] = {lid: {} for lid in self.verified}
         self._seed_task = None
+        self._baseline_task = None
         self._last_compute = 0.0
         self._recompute_timer = None
         self.discovery = None               # DiscoveryManager, set at setup
@@ -310,6 +311,30 @@ class PhaseMapEngine:
         cancel = async_call_later(self.hass, POST_S, _evaluate)
         self._pending.add(cancel)
 
+    async def _async_seed_baseline(self) -> None:
+        """Start the quiet level from the last hours of our own unmetered-current statistics.
+
+        Without this, a reload or restart while the sauna runs would learn the sauna as normal
+        and switch its detector off.
+        """
+        registry = er.async_get(self.hass)
+        ids = {
+            p: eid for p in self.phases
+            if (eid := registry.async_get_entity_id("sensor", DOMAIN, f"{self.entry.entry_id}_{p}_unmetered_current"))
+        }
+        if not ids:
+            return
+        try:
+            means = await async_fetch_means(self.hass, dict.fromkeys(ids.values(), "A"), self.voltage,
+                                            BASELINE_WINDOW * BASELINE_SAMPLE_S / 86400, "5minute")
+        except Exception as err:  # recorder missing or not ready  # noqa: BLE001
+            _LOGGER.debug("Could not read history for the unmetered baseline: %s", err)
+            return
+        values = {p: [v for _, v in sorted(means.get(eid, {}).items())] for p, eid in ids.items()}
+        # One 5-minute mean stands for five one-minute samples
+        self.seed_baseline({p: [v for v in vals for _ in range(5)] for p, vals in values.items() if vals})
+        _LOGGER.debug("Seeded the unmetered baseline: %s", self.baseline)
+
     async def _async_seed_verified(self) -> None:
         """Phases already seen carrying each multi-phase load, from recorder statistics."""
         def unit_of(entity_id: str) -> str | None:
@@ -350,6 +375,9 @@ class PhaseMapEngine:
         for entity_id in self.tracked_entities:
             self.checker.record(entity_id, to_amps(self.hass.states.get(entity_id), self.voltage))
         self._restore_issues()
+        self._baseline_task = self.hass.async_create_background_task(
+            self._async_seed_baseline(), f"phase_map baseline {self.entry.entry_id}"
+        )
         if self.verified:
             self._seed_task = self.hass.async_create_background_task(
                 self._async_seed_verified(), f"phase_map verify phases {self.entry.entry_id}"
@@ -373,8 +401,9 @@ class PhaseMapEngine:
         if self._recompute_timer is not None:
             self._recompute_timer()
             self._recompute_timer = None
-        if self._seed_task is not None and not self._seed_task.done():
-            self._seed_task.cancel()
+        for task in (self._seed_task, self._baseline_task):
+            if task is not None and not task.done():
+                task.cancel()
 
     @callback
     def _on_state_change(self, event: Event[EventStateChangedData]) -> None:
@@ -399,7 +428,12 @@ class PhaseMapEngine:
 
     @callback
     def _sample_baseline(self, _now=None) -> None:
-        """Learn the quiet level of unmetered current per phase."""
+        """Learn the quiet level of unmetered current per phase.
+
+        Not while a detector is on: a long sauna session must not teach it that the sauna is normal.
+        """
+        if any(d.get("on") for d in self.detectors.values()):
+            return
         for p in self.phases:
             value = self.snapshot.get("phases", {}).get(p, {}).get("unmetered_a")
             if value is None:

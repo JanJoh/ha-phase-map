@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.8.1 (2026-10-13)
+
+- **Detectors survive a restart mid-session.** The quiet level of unmetered current that a
+  detector compares against now starts from the last 6 hours of recorded history when the
+  integration starts or reloads. Before, it started from zero and relearned from whatever was
+  running, so a restart while the sauna was on taught it the sauna as "normal" and switched the
+  detector off about 25 minutes later.
+- **Nothing is learned while a detector is on,** so a long session can't become the new normal
+  either.
+
 ## 0.8.0 (2026-10-12)
 
 - **Suggested meters** (off by default; Configure → Settings → Suggest new meters). Once a day
