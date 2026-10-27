@@ -29,6 +29,7 @@ from .const import (
     CONF_ESTIMATED_W,
     CONF_FUSE_A,
     CONF_HOLD_CURRENT_A,
+    CONF_INFO_ENTITY,
     CONF_LABEL_NAME,
     CONF_LABELS,
     CONF_MARGIN_A,
@@ -77,6 +78,8 @@ CONFIDENCE_TEXT = {"en": {"high": "high", "medium": "medium"}, "sv": {"high": "h
 METER_SELECTOR = selector.EntitySelector(
     selector.EntitySelectorConfig(domain="sensor", device_class=["current", "power"])
 )
+# A load with a meter per phase: the sensor the card opens on a click (e.g. the meter's total power)
+INFO_SELECTOR = selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor"))
 
 
 def _number(minimum: float, maximum: float, step: float, unit: str) -> selector.NumberSelector:
@@ -567,9 +570,12 @@ class LoadSubentryFlow(ConfigSubentryFlow):
             if not errors:
                 self._kind = "multi"
                 self._data = {CONF_NAME: user_input[CONF_NAME], CONF_CHANNELS: channels}
+                if user_input.get(CONF_INFO_ENTITY) and len(channels) > 1:
+                    self._data[CONF_INFO_ENTITY] = user_input[CONF_INFO_ENTITY]
                 return await self._after_details()
         schema = vol.Schema(
-            {vol.Required(CONF_NAME): selector.TextSelector(), **{vol.Optional(p): METER_SELECTOR for p in self._phases}}
+            {vol.Required(CONF_NAME): selector.TextSelector(), **{vol.Optional(p): METER_SELECTOR for p in self._phases},
+             vol.Optional(CONF_INFO_ENTITY): INFO_SELECTOR}
         )
         return self.async_show_form(step_id="multi", data_schema=schema, errors=errors)
 
@@ -624,8 +630,12 @@ class LoadSubentryFlow(ConfigSubentryFlow):
             )
             current = {CONF_NAME: subentry.data.get(CONF_NAME, subentry.title), **subentry.data.get(CONF_CHANNELS, {}),
                        CONF_PORTABLE: bool(subentry.data.get(CONF_PORTABLE))}
+            if subentry.data.get(CONF_INFO_ENTITY):
+                current[CONF_INFO_ENTITY] = subentry.data[CONF_INFO_ENTITY]
             if len(subentry.data.get(CONF_CHANNELS, {})) == 1:
                 schema = schema.extend({vol.Optional(CONF_PORTABLE): selector.BooleanSelector()})
+            else:
+                schema = schema.extend({vol.Optional(CONF_INFO_ENTITY): INFO_SELECTOR})
         current[CONF_PARENT] = subentry.data.get(CONF_PARENT) or NO_PARENT
         if user_input is not None:
             if estimated:
@@ -644,6 +654,8 @@ class LoadSubentryFlow(ConfigSubentryFlow):
                 data = {CONF_NAME: user_input[CONF_NAME], CONF_CHANNELS: channels}
                 if user_input.get(CONF_PORTABLE) and len(channels) == 1:
                     data[CONF_PORTABLE] = True
+                if user_input.get(CONF_INFO_ENTITY) and len(channels) > 1:
+                    data[CONF_INFO_ENTITY] = user_input[CONF_INFO_ENTITY]
             parent = user_input.get(CONF_PARENT)
             parent = None if parent in (None, NO_PARENT) else parent
             if parent and self._outside_parent(self._phases_of(data), parent):

@@ -33,6 +33,7 @@ from .const import (
     CONF_ESTIMATED_W,
     CONF_FUSE_A,
     CONF_HOLD_CURRENT_A,
+    CONF_INFO_ENTITY,
     CONF_MARGIN_A,
     CONF_METER,
     CONF_MIN_CURRENT_A,
@@ -99,6 +100,7 @@ class LoadModel:
     estimated_phases: list[str] = field(default_factory=list)
     parent: str | None = None                # subentry id of the meter this load sits behind
     portable: bool = False                   # follow it to a new phase without asking
+    info_entity: str | None = None           # what the card opens on a click (default: the first channel)
 
     meter: str | None = None                 # one meter for several connected phases
     connected: list[str] = field(default_factory=list)
@@ -161,6 +163,7 @@ class PhaseMapEngine:
                 connected=[p for p in self.phases if p in (sub.data.get(CONF_CONNECTED) or [])],
                 draw=sub.data.get(CONF_DRAW) or DRAW_EQUAL,
                 portable=bool(sub.data.get(CONF_PORTABLE)),
+                info_entity=sub.data.get(CONF_INFO_ENTITY) or None,
             )
             for sub in entry.subentries.values()
             if sub.subentry_type == SUBENTRY_LOAD
@@ -501,8 +504,10 @@ class PhaseMapEngine:
                 "parent": self.parents.get(load.subentry_id),
                 "estimated": load.estimated,
                 "estimated_w": load.estimated_w,
-                # What the card opens when the load is clicked: the meter, or the first channel
-                "entity_id": load.meter or next((load.channels[p] for p in self.phases if p in load.channels), None),
+                # What the card opens when the load is clicked: the chosen sensor, the meter, or
+                # the first channel
+                "entity_id": load.info_entity or load.meter
+                or next((load.channels[p] for p in self.phases if p in load.channels), None),
                 "a": {p: (round(a, 3) if a is not None else None) for p, a in own.items()},
                 "w": {p: (round(max(a, 0.0) * self.voltage) if a is not None else None) for p, a in own.items()},
             }

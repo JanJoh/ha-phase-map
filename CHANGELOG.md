@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.11.0 (2026-10-27)
+
+- **Choose what a load opens on the card.** A load with a meter per phase (a Shelly Pro 3EM
+  measuring current per phase) has a new optional field, *Sensor to open on the card*, for
+  example the meter's total power. Without it the card opens the first phase's channel, as
+  before. Set it when adding the load or under the load's ⋮ → Reconfigure.
+
 ## 0.10.0 (2026-10-27)
 
 - **The card's boxes are clickable**: a load opens its meter, *Unmetered* the phase's

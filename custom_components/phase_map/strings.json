@@ -207,7 +207,11 @@
           "title": "Multi-phase load",
           "description": "Pick the meter channel for each phase the load uses, for example the three phases of a Shelly Pro 3EM. Leave unused phases empty.",
           "data": {
-            "name": "Name"
+            "name": "Name",
+            "info_entity": "Sensor to open on the card"
+          },
+          "data_description": {
+            "info_entity": "Optional. Clicking the load on the phase bus card opens this sensor, for example the meter's total power. Without it the card opens the first phase's channel."
           }
         },
         "estimated": {
@@ -226,10 +230,12 @@
             "estimated_phases": "Phases",
             "estimated_w": "Estimated power when on",
             "parent": "Upstream meter",
-            "portable": "Portable: follow it when it moves to another phase"
+            "portable": "Portable: follow it when it moves to another phase",
+            "info_entity": "Sensor to open on the card"
           },
           "data_description": {
-            "portable": "For something that is moved between sockets (a space heater, a kettle). Phase Map watches its switch-on and switch-off events; when they clearly show another phase, it moves the load there by itself. Otherwise it asks under Settings → Repairs."
+            "portable": "For something that is moved between sockets (a space heater, a kettle). Phase Map watches its switch-on and switch-off events; when they clearly show another phase, it moves the load there by itself. Otherwise it asks under Settings → Repairs.",
+            "info_entity": "Optional. Clicking the load on the phase bus card opens this sensor, for example the meter's total power. Without it the card opens the first phase's channel."
           }
         },
         "parent": {

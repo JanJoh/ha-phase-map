@@ -332,7 +332,8 @@ days: 10          # for average
 
 Click a box to open its sensor: a load opens its meter (the first phase's, for a load with a
 meter per phase), *Unmetered* the phase's unmetered-current sensor, and a detector its power
-sensor.
+sensor. A load with a meter per phase can open another sensor instead, such as the meter's
+total power: set *Sensor to open on the card* under the load's ⋮ → Reconfigure.
 
 ## Websocket API
 

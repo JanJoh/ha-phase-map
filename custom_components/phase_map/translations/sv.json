@@ -207,7 +207,11 @@
           "title": "Flerfaslast",
           "description": "Välj mätarkanalen för varje fas som lasten använder, till exempel de tre faserna i en Shelly Pro 3EM. Lämna oanvända faser tomma.",
           "data": {
-            "name": "Namn"
+            "name": "Namn",
+            "info_entity": "Sensor att öppna på kortet"
+          },
+          "data_description": {
+            "info_entity": "Valfritt. Ett klick på lasten i fasdiagrammet öppnar den här sensorn, till exempel mätarens totala effekt. Utan den öppnar kortet kanalen för första fasen."
           }
         },
         "estimated": {
@@ -226,10 +230,12 @@
             "estimated_phases": "Faser",
             "estimated_w": "Uppskattad effekt när den är på",
             "parent": "Överordnad mätare",
-            "portable": "Flyttbar: följ med när den flyttas till en annan fas"
+            "portable": "Flyttbar: följ med när den flyttas till en annan fas",
+            "info_entity": "Sensor att öppna på kortet"
           },
           "data_description": {
-            "portable": "För något som flyttas mellan uttag (ett element, en vattenkokare). Phase Map följer när den slås på och av; visar det tydligt en annan fas flyttas lasten dit automatiskt. Annars frågar den under Inställningar → Reparationer."
+            "portable": "För något som flyttas mellan uttag (ett element, en vattenkokare). Phase Map följer när den slås på och av; visar det tydligt en annan fas flyttas lasten dit automatiskt. Annars frågar den under Inställningar → Reparationer.",
+            "info_entity": "Valfritt. Ett klick på lasten i fasdiagrammet öppnar den här sensorn, till exempel mätarens totala effekt. Utan den öppnar kortet kanalen för första fasen."
           }
         },
         "parent": {

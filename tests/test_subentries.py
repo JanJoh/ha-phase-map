@@ -114,3 +114,24 @@ async def test_detector_flow(hass: HomeAssistant, main_fuse_states) -> None:
     assert result["type"] is FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
     assert hass.states.get("binary_sensor.sauna") is not None
+
+
+async def test_reconfigure_multi_info_entity(hass: HomeAssistant, main_fuse_states) -> None:
+    """A load with a meter per phase can name the sensor the card opens on a click."""
+    entry = make_entry(hass)
+    await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    row = lambda: next(r for r in entry.runtime_data.payload()["loads"] if r["id"] == "sub_ev")  # noqa: E731
+    assert row()["entity_id"] == "sensor.ev_l1"
+    result = await hass.config_entries.subentries.async_init(
+        (entry.entry_id, "load"), context={"source": SOURCE_RECONFIGURE, "subentry_id": "sub_ev"}
+    )
+    assert result["step_id"] == "reconfigure" and "info_entity" in result["data_schema"].schema
+    result = await hass.config_entries.subentries.async_configure(
+        result["flow_id"], {"name": "EV charger", "L1": "sensor.ev_l1", "L2": "sensor.ev_l2", "L3": "sensor.ev_l3",
+                            "info_entity": "sensor.ev_total"}
+    )
+    assert result["type"] is FlowResultType.ABORT and result["reason"] == "reconfigure_successful"
+    assert entry.subentries["sub_ev"].data["info_entity"] == "sensor.ev_total"
+    await hass.async_block_till_done()
+    assert row()["entity_id"] == "sensor.ev_total"

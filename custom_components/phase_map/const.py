@@ -33,6 +33,7 @@ CONF_ESTIMATED_PHASES = "estimated_phases"
 CONF_PARENT = "parent"            # subentry id of the meter this load sits behind, if any
 NO_PARENT = "none"
 CONF_PORTABLE = "portable"        # follow the load to a new phase without asking
+CONF_INFO_ENTITY = "info_entity"  # what the card opens on a click, instead of the first channel
 # One meter for a load connected to several phases (a CEE outlet with a single total meter)
 CONF_METER = "meter"              # the meter's entity_id
 CONF_CONNECTED = "connected_phases"   # the phases it is wired to (how the card draws it)
