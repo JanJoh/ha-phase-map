@@ -501,6 +501,8 @@ class PhaseMapEngine:
                 "parent": self.parents.get(load.subentry_id),
                 "estimated": load.estimated,
                 "estimated_w": load.estimated_w,
+                # What the card opens when the load is clicked: the meter, or the first channel
+                "entity_id": load.meter or next((load.channels[p] for p in self.phases if p in load.channels), None),
                 "a": {p: (round(a, 3) if a is not None else None) for p, a in own.items()},
                 "w": {p: (round(max(a, 0.0) * self.voltage) if a is not None else None) for p, a in own.items()},
             }
@@ -577,9 +579,21 @@ class PhaseMapEngine:
         async_dispatcher_send(self.hass, SIGNAL_UPDATE.format(self.entry.entry_id))
 
     def payload(self) -> dict[str, Any]:
-        """Snapshot plus detector states, for the websocket API."""
-        return {**self.snapshot, "detectors": [
-            {**d, **(self.detector_reading(d["id"]) or {"a": {}, "w": {}, "power_w": None})}
+        """Snapshot plus detector states, for the websocket API.
+
+        Also carries the entity ids the card opens on a click: each phase's unmetered sensor and
+        each detector's power sensor (looked up here, as they can be renamed).
+        """
+        ent_reg = er.async_get(self.hass)
+
+        def own(uid: str) -> str | None:
+            return ent_reg.async_get_entity_id("sensor", DOMAIN, f"{self.entry.entry_id}_{uid}")
+
+        phases = {p: {**ph, "unmetered_entity_id": own(f"{p}_unmetered_current")}
+                  for p, ph in self.snapshot.get("phases", {}).items()}
+        return {**self.snapshot, "phases": phases, "detectors": [
+            {**d, **(self.detector_reading(d["id"]) or {"a": {}, "w": {}, "power_w": None}),
+             "entity_id": own(f"{d['id']}_power")}
             for d in self.detectors.values()
         ]}
 

@@ -330,6 +330,10 @@ mode: live        # or: average
 days: 10          # for average
 ```
 
+Click a box to open its sensor: a load opens its meter (the first phase's, for a load with a
+meter per phase), *Unmetered* the phase's unmetered-current sensor, and a detector its power
+sensor.
+
 ## Websocket API
 
 The card uses these commands; other frontends can too.

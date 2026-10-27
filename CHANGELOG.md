@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.10.0 (2026-10-27)
+
+- **The card's boxes are clickable**: a load opens its meter, *Unmetered* the phase's
+  unmetered-current sensor, and a detector its power sensor.
+- The websocket payload carries the entity ids for this: `entity_id` per load (its meter, or
+  the first phase's channel), `unmetered_entity_id` per phase and `entity_id` per detector.
+- Bundles phase-bus-card **0.9.0**.
+
 ## 0.9.4 (2026-10-13)
 
 - **A load on one phase no longer keeps a detector on after the session.** An air fryer

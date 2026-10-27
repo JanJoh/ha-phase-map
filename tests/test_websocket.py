@@ -35,6 +35,12 @@ async def test_entries_and_subscribe(hass: HomeAssistant, hass_ws_client, main_f
     assert names["EV charger"]["phases"] == ["L1", "L2", "L3"]
     assert payload["detectors"][0]["name"] == "Sauna running"
     assert payload["detectors"][0]["power_w"] == 0 and payload["detectors"][0]["w"] == {"L1": 0, "L2": 0, "L3": 0}
+    # Entity ids the card opens on a click
+    assert names["Dishwasher"]["entity_id"] == "sensor.dishwasher"
+    assert names["EV charger"]["entity_id"] == "sensor.ev_l1"
+    assert names["Sauna"]["entity_id"] is None
+    assert payload["phases"]["L2"]["unmetered_entity_id"] == "sensor.main_fuse_l2_unmetered_current"
+    assert payload["detectors"][0]["entity_id"].startswith("sensor.") and payload["detectors"][0]["entity_id"].endswith("_power")
 
     set_amps(hass, "sensor.main_l2", 13.0)
     msg = await client.receive_json()

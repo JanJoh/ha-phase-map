@@ -9,7 +9,7 @@
  * MIT License
  */
 
-const CARD_VERSION = "0.8.1";
+const CARD_VERSION = "0.9.0";
 
 const DEFAULT_COLORS = { L1: "#b8622a", L2: "#3a7fc1", L3: "#4f8f36" };
 const ESTIMATED_COLOR = "#8a5cc2";
@@ -83,7 +83,19 @@ class PhaseBusCard extends HTMLElement {
   }
 
   connectedCallback() {
-    if (!this.shadowRoot) this.attachShadow({ mode: "open" });
+    if (!this.shadowRoot) {
+      this.attachShadow({ mode: "open" });
+      // A box with an entity behind it opens that entity's more-info dialog. Listening on the
+      // shadow root survives the re-render on every update.
+      const open = (ev) => {
+        const el = ev.composedPath().find((n) => n.dataset && n.dataset.entity);
+        if (!el) return;
+        ev.preventDefault();
+        this.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId: el.dataset.entity }, bubbles: true, composed: true }));
+      };
+      this.shadowRoot.addEventListener("click", open);
+      this.shadowRoot.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") open(ev); });
+    }
     this._resubscribe();
   }
 
@@ -199,7 +211,7 @@ class PhaseBusCard extends HTMLElement {
       const perPhase = {};
       for (const p of d.phases) perPhase[p] = d.w?.[p] ?? null;
       items[`det_${d.id}`] = { id: `det_${d.id}`, name: d.name, phases: d.phases, detected: true, on: !!d.on,
-        perPhase, total: d.power_w ?? null, restW: {}, children: [] };
+        entity_id: d.entity_id, perPhase, total: d.power_w ?? null, restW: {}, children: [] };
     }
     const roots = [];
     for (const load of live.loads) {
@@ -220,20 +232,21 @@ class PhaseBusCard extends HTMLElement {
         if (avgMode) rows[p].sort((a, b) => (b.total ?? -1) - (a.total ?? -1));
         const rest = o.rest[p];
         rows[p].push({ id: `rest_${o.key}_${p}`, name: o.restName, rest: true, phases: [p],
-          total: rest == null ? null : Math.max(rest, 0) });
+          entity_id: o.restEntity?.[p], total: rest == null ? null : Math.max(rest, 0) });
       }
       return { ...o, rows, multi };
     };
-    const mainRest = {}, mainLabel = {}, warn = {};
+    const mainRest = {}, mainLabel = {}, warn = {}, restEntity = {};
     for (const p of order) {
       const ph = live.phases[p];
+      restEntity[p] = ph.unmetered_entity_id;
       mainRest[p] = avgMode ? avg?.phases?.[p]?.unmetered_w : (ph.unmetered_a == null ? null : ph.unmetered_a * v);
       for (const d of detected) if (mainRest[p] != null && d.w?.[p]) mainRest[p] -= d.w[p];
       if (avgMode) mainLabel[p] = `≈ ${fmtW(avg?.phases?.[p]?.total_w)} ${this._t("average")}`;
       else mainLabel[p] = ph.current_a == null ? "–" : `${ph.current_a.toFixed(1)} A ${this._t("of")} ${live.fuse_a} A`;
       warn[p] = !avgMode && ph.current_a != null && ph.current_a >= live.fuse_a - (live.margin_a ?? 1);
     }
-    const panels = [panel(roots, { key: "main", main: true, phases: order, rest: mainRest,
+    const panels = [panel(roots, { key: "main", main: true, phases: order, rest: mainRest, restEntity,
       restName: this._t("unmetered"), title: [this._t("main_fuse")], subtitle: `${order.length} × ${live.fuse_a} A`,
       label: mainLabel, warn })];
     const addSubs = (pnl) => {
@@ -270,6 +283,15 @@ class PhaseBusCard extends HTMLElement {
     return { busY, xs, centres, w, h, boxTop3, lastBus };
   }
 
+  // A box whose entity can be opened is wrapped in a focusable group (see connectedCallback)
+  _hitOpen(ld) {
+    return ld.entity_id ? `<g class="hit" data-entity="${esc(ld.entity_id)}" tabindex="0" role="button" aria-label="${esc(ld.name)}">` : "";
+  }
+
+  _hitClose(ld) {
+    return ld.entity_id ? "</g>" : "";
+  }
+
   _movedMark(o, ld, xRight, yTop) {
     const pc = ld.phase_check;
     if (!pc || !pc.suspected) return;
@@ -299,6 +321,7 @@ class PhaseBusCard extends HTMLElement {
         const est = ld.estimated, det = ld.detected;
         o.push(`<line class="tap" x1="${cx}" y1="${y}" x2="${cx}" y2="${top}" style="stroke:${est || det ? ESTIMATED_COLOR : c}"/>`);
         o.push(`<circle cx="${cx}" cy="${y}" r="4" style="fill:${c}"/>`);
+        o.push(this._hitOpen(ld));
         o.push(`<rect class="box${ld.rest ? " rest" : ""}${est || det ? " est" : ""}${ld.children?.length ? " feeds" : ""}" x="${x}" y="${top}" width="${BW}" height="${BH}" rx="6" style="stroke:${est || det ? ESTIMATED_COLOR : c}">${det ? `<title>${esc(this._t("detected_tip"))}</title>` : ""}</rect>`);
         const lines = splitName(ld.name);
         const ty = lines.length === 2 ? top + 17 : top + 24;
@@ -306,6 +329,7 @@ class PhaseBusCard extends HTMLElement {
         const val = est ? `${this._t("est")} ${fmtW(ld.estimated_w, 1000)}` : fmtW(ld.total);
         o.push(`<text class="w${!est && !ld.total ? " zero" : ""}" x="${cx}" y="${top + BH - 8}" text-anchor="middle">${esc(val)}</text>`);
         this._movedMark(o, ld, x + BW, top);
+        o.push(this._hitClose(ld));
         anchors[ld.id] = { x: ox + cx, y: oy + top + BH };
       });
     });
@@ -336,6 +360,7 @@ class PhaseBusCard extends HTMLElement {
           o.push(`<text class="jw" x="${x + 7}" y="${busY[p] - 6}" style="fill:${col(p)}">${esc(fmtW(pw))}</text>`);
         }
       });
+      o.push(this._hitOpen(ld));
       o.push(`<rect class="box tp${est || det ? " est" : ""}${ld.children?.length ? " feeds" : ""}" x="${xc - TP_W / 2}" y="${boxTop3}" width="${TP_W}" height="${TP_H}" rx="6"${est || det ? ` style="stroke:${ESTIMATED_COLOR}"` : ""}>${det ? `<title>${esc(this._t("detected_tip"))}</title>` : ""}</rect>`);
       const txt = [];
       splitName(ld.name).forEach((l) => txt.push(["nm t3" + (est || det ? " estc" : ""), l]));
@@ -364,6 +389,7 @@ class PhaseBusCard extends HTMLElement {
           : esc(t);
         o.push(`<text class="${cls}${split ? " split" : ""}" x="${xc}" y="${boxTop3 + 19 + k * 16}" text-anchor="middle">${body}</text>`);
       });
+      o.push(this._hitClose(ld));
       anchors[ld.id] = { x: ox + xc, y: oy + boxTop3 + TP_H };
     });
     o.push("</g>");
@@ -450,6 +476,9 @@ class PhaseBusCard extends HTMLElement {
         .box.rest { fill: var(--secondary-background-color, transparent); stroke-dasharray: 4 3; }
         .box.est { stroke-dasharray: 5 4; }
         .box.tp { stroke: var(--primary-text-color); }
+        .hit { cursor: pointer; outline: none; }
+        .hit:hover .box, .hit:focus-visible .box { fill: var(--secondary-background-color, rgba(127,127,127,.12)); }
+        .hit:focus-visible .box { stroke-width: 2.5; }
         .nm { font: 500 11.5px var(--ha-font-family-body, sans-serif); fill: var(--primary-text-color); }
         .nm.t3 { font-weight: 600; font-size: 12.5px; }
         .nm.estc { fill: ${ESTIMATED_COLOR}; }
